@@ -1,11 +1,13 @@
 /*
- * Use an arduino to drive our translux display (it has 4x16 LED modules, each 5x7 pixels)
+ * Use an arduino to drive our translux display (it has 4x32 LED modules, each 5x7 pixels)
  */
 int txPin        = 11;
 int clockPin     = 12;
 int rowEnablePin = 13;
 
-void setup() {  
+void setup() {
+  Serial.begin(9600); // init serial port at 9600 baud
+  
   pinMode(txPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(rowEnablePin, OUTPUT);
@@ -143,7 +145,7 @@ void serbit(int bit) {
 // (plus an extra ignored bit.)
 // But we have to send whole rows of bits at once to the board, so this rotates that
 // and gives back a char (of which you should only use the low 5 bits.)
-unsigned char rowdots(int row, unsigned char c) {
+unsigned char rowdots(int row, char c) {
     unsigned char result = 0x00;
 
     if (row < 0 || row > 6) return 0x00;
@@ -159,7 +161,7 @@ unsigned char rowdots(int row, unsigned char c) {
 
 // send the 80 bits that correspond to a row slice out of
 // the character images in msg[]
-void sendrow(int row, unsigned char msg[16]) {
+void sendrow(int row, char msg[16]) {
     if (row < 0 || row > 6) { return; }
     for (int i=0; i<16; i++) {
         unsigned char rowbyte = rowdots(row, msg[i]);
@@ -172,7 +174,7 @@ void sendrow(int row, unsigned char msg[16]) {
     }
 }
 
-void chrot16(int rotidx, unsigned char msg[16]) {
+void chrot16(int rotidx, char msg[16]) {
     for (int i=0; i<16; i++) {
         msg[i] = 0x20 + ((rotidx + i) % 95);
     }
@@ -182,11 +184,15 @@ void chrot16(int rotidx, unsigned char msg[16]) {
 // then send those chars to display, wait ~0.7 sec, repeat
 // w/ next range
 void loop() {
-    unsigned char msg[16];
+    char msg[16];
 
     for (int i=0; i<95; i++) {
-        chrot16(i, msg);
-
+        if (Serial.available() > 0) {
+            byte count = Serial.readBytesUntil('\n', msg, 16);
+        } else {
+            chrot16(i, msg);
+        }
+    
         // this should give us 100*7*1ms ~= 700ms of same data before next chrot16 call
         for (int rowRefreshes=0; rowRefreshes<100; rowRefreshes++) {
             for (int r=0; r<7; r++) {
