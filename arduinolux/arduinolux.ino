@@ -1,18 +1,20 @@
 /*
- * Use an arduino to drive our translux display (it has 4x16 LED modules, each 5x7 pixels)
+ * Use an arduino to drive our translux display (it has 4x32 LED modules, each 5x7 pixels)
  */
 int txPin        = 11;
 int clockPin     = 12;
 int rowEnablePin = 13;
 
-void setup() {  
+void setup() {
+  Serial.begin(9600); // init serial port at 9600 baud
+  
   pinMode(txPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(rowEnablePin, OUTPUT);
 
   digitalWrite(txPin, LOW);
   digitalWrite(clockPin, LOW);
-  digitalWrite(rowEnablePin, HIGH);
+  digitalWrite(rowEnablePin, LOW);
 }
 
 // font starts at ascii 0x20 (space) and goes up to 0x7e
@@ -108,11 +110,13 @@ unsigned char font1[][5] = {
 {0x44, 0x28, 0x10, 0x28, 0x44}, // x
 {0x0C, 0x50, 0x50, 0x50, 0x3C}, // y
 {0x44, 0x64, 0x54, 0x4C, 0x44}, // z
-{0x00, 0x08, 0x36, 0x41, 0x00}, // {
+{0x1c, 0x3e, 0x6b, 0x14, 0x00}, // RHL alien head
+//{0x00, 0x08, 0x36, 0x41, 0x00}, // {
 {0x00, 0x00, 0x7F, 0x00, 0x00}, // |
 {0x00, 0x41, 0x36, 0x08, 0x00}, // }
 {0x08, 0x04, 0x08, 0x10, 0x08}, // ~
-{0x08, 0x1C, 0x2A, 0x08, 0x08} // <-
+{0x1c, 0x3e, 0x6b, 0x14, 0x00} // RHL alien head
+//{0x08, 0x1C, 0x2A, 0x08, 0x08} // <-
 };
 
 // pulse serial clock high
@@ -134,7 +138,9 @@ void rowdisable() {
 
 // clock 1 data bit out on the tx pin
 void serbit(int bit) {
+    //Serial.write((bit ? "1" : "0"));
     digitalWrite(txPin, (bit ? HIGH : LOW));
+    //delay(2);
     scl();
 }
 
@@ -143,36 +149,48 @@ void serbit(int bit) {
 // (plus an extra ignored bit.)
 // But we have to send whole rows of bits at once to the board, so this rotates that
 // and gives back a char (of which you should only use the low 5 bits.)
-unsigned char rowdots(int row, unsigned char c) {
+unsigned char rowdots(int row, char c) {
     unsigned char result = 0x00;
+    
+    //Serial.write(c);
 
-    if (row < 0 || row > 6) return 0x00;
-    if (c < 0x20 || c > 0xfe) return 0x00;
+    if ((row < 0) || (row > 6)) return 3; //0x55;
+    if (c < 0x20 || c > 0xfe) {
+        //Serial.write("found char: ");
+        //Serial.write(c); Serial.write("\n");
+        return 0xaa;
+    }
 
     for (int column=0; column<5; column++) {
         unsigned char columnByte = font1[c - 0x20][column];
-        unsigned char bit = 0;
-        if (columnByte & (1 << row)) { bit = 1; }
-        result |= (bit << column);
+        unsigned char mybit = 0;
+        if (columnByte & (1 << row)) { mybit = 1; }
+        result |= (mybit << column);
     }
+    
+    return result;
 }
 
 // send the 80 bits that correspond to a row slice out of
 // the character images in msg[]
-void sendrow(int row, unsigned char msg[16]) {
-    if (row < 0 || row > 6) { return; }
+void sendrow(int row, char msg[16]) {
+    if (row < 0 || row > 6) { for (int j=0; j<83; j++) { serbit(1); } }
     for (int i=0; i<16; i++) {
         unsigned char rowbyte = rowdots(row, msg[i]);
+        //rowbyte = 16;
+        //rowbyte = 0xaa;
+        //Serial.write("rowbyte %d for char %c\n", rowbyte, msg[i]);
         for (int bitpos = 0; bitpos < 5; bitpos++) {
-            serbit(rowbyte & (1<<bitpos));
+            serbit((rowbyte>>bitpos) & 0x1);// & (1<<bitpos));
+            //serbit(bitpos % 3 == 0);
         }
     }
-    for (int rn=0; rn<3; rn++) {
+    for (int rn=2; rn>=0; rn--) {
         serbit((row+1)>>rn & 0x01);
     }
 }
 
-void chrot16(int rotidx, unsigned char msg[16]) {
+void chrot16(int rotidx, char msg[16]) {
     for (int i=0; i<16; i++) {
         msg[i] = 0x20 + ((rotidx + i) % 95);
     }
@@ -182,19 +200,31 @@ void chrot16(int rotidx, unsigned char msg[16]) {
 // then send those chars to display, wait ~0.7 sec, repeat
 // w/ next range
 void loop() {
-    unsigned char msg[16];
+    //              123456789012346
+    char localmsg[16] = "{ ROGUEHACKLAB ";
+    localmsg[15] = ' ';
 
-    for (int i=0; i<95; i++) {
-        chrot16(i, msg);
-
+    //for (int i=0; i<95; i++) {
+        if (Serial.available() > 0) {
+            byte count = Serial.readBytesUntil('\n', localmsg, 16);
+            //Serial.write("OK: ");
+            //Serial.write(msg);
+            //Serial.write("\n");
+        } else {
+            //chrot16(i, msg);
+            //Serial.write("chrot16'ed my way to: ");
+            //Serial.write(msg);
+            //Serial.write("\n");
+        }
+    
         // this should give us 100*7*1ms ~= 700ms of same data before next chrot16 call
         for (int rowRefreshes=0; rowRefreshes<100; rowRefreshes++) {
             for (int r=0; r<7; r++) {
                 rowdisable();
-                sendrow(r, msg);
+                sendrow(r, localmsg);
                 rowenable();
                 delay(1); // 1ms row dwell
             }
         }
-    }
+    //}
 }
