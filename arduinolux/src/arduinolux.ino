@@ -138,9 +138,7 @@ void rowdisable() {
 
 // clock 1 data bit out on the tx pin
 void serbit(int bit) {
-    //Serial.write((bit ? "1" : "0"));
     digitalWrite(txPin, (bit ? HIGH : LOW));
-    //delay(2);
     scl();
 }
 
@@ -154,7 +152,7 @@ unsigned char rowdots(int row, char c) {
     
     //Serial.write(c);
 
-    if ((row < 0) || (row > 6)) return 3; //0x55;
+    if ((row < 0) || (row > 6)) return 0x55;
     if (c < 0x20 || c > 0xfe) {
         //Serial.write("found char: ");
         //Serial.write(c); Serial.write("\n");
@@ -190,9 +188,15 @@ void sendrow(int row, char msg[16]) {
     }
 }
 
-void chrot16(int rotidx, char msg[16]) {
-    for (int i=0; i<16; i++) {
-        msg[i] = 0x20 + ((rotidx + i) % 95);
+void get_new_msg(char *msg, int len) {
+    if (Serial.available() > 0) {
+        for (int i=0; i<len; i++) {
+	    msg[i] = ' ';
+	}
+        byte count = Serial.readBytesUntil('\n', msg, len);
+	//Serial.write("OK: "); // who do serial writes messa up our data?
+	//Serial.write(msg);
+	//Serial.write("\n");
     }
 }
 
@@ -200,31 +204,23 @@ void chrot16(int rotidx, char msg[16]) {
 // then send those chars to display, wait ~0.7 sec, repeat
 // w/ next range
 void loop() {
+    int len = 16;
     //              123456789012346
     char localmsg[16] = "{ ROGUEHACKLAB ";
     localmsg[15] = ' ';
 
-    //for (int i=0; i<95; i++) {
-        if (Serial.available() > 0) {
-            byte count = Serial.readBytesUntil('\n', localmsg, 16);
-            //Serial.write("OK: ");
-            //Serial.write(msg);
-            //Serial.write("\n");
-        } else {
-            //chrot16(i, msg);
-            //Serial.write("chrot16'ed my way to: ");
-            //Serial.write(msg);
-            //Serial.write("\n");
-        }
-    
-        // this should give us 100*7*1ms ~= 700ms of same data before next chrot16 call
-        for (int rowRefreshes=0; rowRefreshes<100; rowRefreshes++) {
-            for (int r=0; r<7; r++) {
-                rowdisable();
-                sendrow(r, localmsg);
-                rowenable();
-                delay(1); // 1ms row dwell
-            }
-        }
-    //}
+    while (true) {
+        get_new_msg(localmsg, len);
+
+	// this should give us 100*7*1ms ~= 700ms of same data before we have
+	// an opportunity to load a new message
+	for (int rowRefreshes=0; rowRefreshes<100; rowRefreshes++) {
+	  for (int r=0; r<7; r++) {
+	    rowdisable();
+	    sendrow(r, localmsg);
+	    rowenable();
+	    delay(1); // 1ms row dwell
+	  }
+	}
+    }
 }
