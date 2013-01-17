@@ -5,18 +5,6 @@ int txPin        = 11;
 int clockPin     = 12;
 int rowEnablePin = 13;
 
-void setup() {
-  Serial.begin(9600); // init serial port at 9600 baud
-  
-  pinMode(txPin, OUTPUT);
-  pinMode(clockPin, OUTPUT);
-  pinMode(rowEnablePin, OUTPUT);
-
-  digitalWrite(txPin, LOW);
-  digitalWrite(clockPin, LOW);
-  digitalWrite(rowEnablePin, LOW);
-}
-
 // font starts at ascii 0x20 (space) and goes up to 0x7e
 unsigned char font1[][5] = {
 {0x00, 0x00, 0x00, 0x00, 0x00}, // (space)
@@ -188,6 +176,8 @@ void sendrow(int row, char msg[16]) {
     }
 }
 
+
+// Accept new data for display from the serial port
 void get_new_msg(char *msg, int len) {
     if (Serial.available() > 0) {
         for (int i=0; i<len; i++) {
@@ -200,9 +190,21 @@ void get_new_msg(char *msg, int len) {
     }
 }
 
-// pick an arbitrary 16 char range out of our font,
-// then send those chars to display, wait ~0.7 sec, repeat
-// w/ next range
+
+void setup() {
+  Serial.begin(9600); // init serial port at 9600 baud
+  
+  pinMode(txPin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
+  pinMode(rowEnablePin, OUTPUT);
+
+  rowdisable();
+  digitalWrite(txPin, LOW);
+  digitalWrite(clockPin, LOW);
+  //digitalWrite(rowEnablePin, LOW);
+}
+
+
 void loop() {
     int len = 16;
     //              123456789012346
