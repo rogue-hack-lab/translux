@@ -178,16 +178,23 @@ void sendrow(int row, char msg[16]) {
 
 
 // Accept new data for display from the serial port
-void get_new_msg(char *msg, int len) {
+int get_new_msg(char msg[16]) {
     if (Serial.available() > 0) {
-        for (int i=0; i<len; i++) {
+        for (int i=0; i<16; i++) {
 	    msg[i] = ' ';
 	}
+
+	Serial.print("OK, old message: ");
+	Serial.print(msg);
+	Serial.print("\n");
+
         byte count = Serial.readBytesUntil('\n', msg, len);
-	//Serial.write("OK: "); // who do serial writes messa up our data?
-	//Serial.write(msg);
-	//Serial.write("\n");
+	Serial.print("OK, new message: "); // why do serial writes mess up our data?
+	Serial.print(msg);
+	Serial.print("\n");
+	return 1;
     }
+    return 0;
 }
 
 
@@ -201,18 +208,27 @@ void setup() {
   rowdisable();
   digitalWrite(txPin, LOW);
   digitalWrite(clockPin, LOW);
-  //digitalWrite(rowEnablePin, LOW);
 }
 
+void displaymsg(char msg[16], int duration_ms) {
+    rowdisable();
+    for (int r=0; r<7; r++) {
+	sendrow(r, localmsg);
+    }
+    rowenable();
+    delay(duration_ms);
+}
 
 void loop() {
     int len = 16;
-    //              123456789012346
-    char localmsg[16] = "{ ROGUEHACKLAB ";
+    //                   123456789012346
+    char localmsg[16] = "{ ROGUEHACKLAB "; // compiler zero terminates
     localmsg[15] = ' ';
 
     while (true) {
-        get_new_msg(localmsg, len);
+        if (get_new_msg(localmsg, len)) {
+	    Serial.print("OK, new message: "); Serial.print(localmsg); Serial.print("\n");
+	}
 
 	// this should give us 100*7*1ms ~= 700ms of same data before we have
 	// an opportunity to load a new message
