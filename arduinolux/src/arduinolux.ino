@@ -155,15 +155,9 @@ void serbit(int bit) {
 // and gives back a char (of which you should only use the low 5 bits.)
 unsigned char rowdots(int row, char c) {
     unsigned char result = 0x00;
-    
-    //Serial.write(c);
 
     if ((row < 0) || (row > 6)) return 0x55;
-    if (c < 0x20 || c > 0xfe) {
-        //Serial.write("found char: ");
-        //Serial.write(c); Serial.write("\n");
-        return 0xaa;
-    }
+    if (c < 0x20 || c > 0xfe) return 0xaa;
 
     for (int column=0; column<5; column++) {
         unsigned char columnByte = font1[c - 0x20][column];
@@ -176,17 +170,14 @@ unsigned char rowdots(int row, char c) {
 }
 
 // send the 80 bits that correspond to a row slice out of
-// the character images in msg[]
+// the character images in msg[], then the 3 row select bits
+// for an 83 bit frame, total
 void sendrow(int row, char msg[16]) {
     if (row < 0 || row > 6) { return; }
     for (int i=0; i<16; i++) {
         unsigned char rowbyte = rowdots(row, msg[i]);
-        //rowbyte = 16;
-        //rowbyte = 0xaa;
-        //Serial.write("rowbyte %d for char %c\n", rowbyte, msg[i]);
         for (int bitpos = 0; bitpos < 5; bitpos++) {
-            serbit((rowbyte>>bitpos) & 0x1);// & (1<<bitpos));
-            //serbit(bitpos % 3 == 0);
+            serbit((rowbyte>>bitpos) & 0x1);
         }
     }
     for (int rn=2; rn>=0; rn--) {
@@ -194,39 +185,6 @@ void sendrow(int row, char msg[16]) {
     }
 }
 
-
-// Accept new data for display from the serial port
-// Once we see data coming in on the serial line, read
-// until we get a newline, no matter what.
-//
-int getnewmsgold(char msg[16]) {
-    if (Serial.available() > 0) {
-        char newmsg[16];
-        for (int i=0; i<16; i++) { newmsg[i] = ' '; }
-
-        // read until we get a newline, just discard anything that would overflow string
-        int inx = 0;
-        int byteread = ' ';
-        while (true) {
-            byteread = Serial.read();
-            if (byteread < 0) { delay(100); continue; }      // read returns -1 on timeout, delay 100ms then try again
-            if (byteread == '\n' || byteread == '\r') break; // don't include newline in message to display
-
-            if (inx < 16) {
-                newmsg[inx++] = char(byteread);
-            }
-        }
-
-        Serial.println();
-	Serial.print("OK, old message: "); Serial.println(msg);
-	for (int i=0; i<16; i++) { msg[i] = newmsg[i]; }
-
-	Serial.print("OK, new message: ");
-	Serial.println(msg);
-	return 1;
-    }
-    return 0;
-}
 
 int getnewmsg(char *msg, int len) {
     if (Serial.available() > 0) {
@@ -270,26 +228,19 @@ void setup() {
   digitalWrite(clockPin, LOW);
 }
 
-void displaymsgold(char msg[16], int duration_ms) {
-    for (int r=0; r<7; r++) {
-        rowdisable();
-	sendrow(r, msg);
-	rowenable();
-    }
-    delay(duration_ms);
-    rowdisable();
-    delay(200);
-}
-
 void displaymsg(char msg[32], int duration_ms) {
-  for(int i=0; i<100; i++) {
-  for (int r=0; r<7; r++) {
-    rowdisable();
-    sendrow(r, msg);
-    sendrow(r, msg+16);
-    rowenable();
-    delay(1);
-  }
+  // we have to send rows 1 at a time, then dwell for long enough for the image to persist
+  int duration_cycles = duration_ms / 7;
+
+  for(int i=0; i<duration_cycles; i++) {
+    for (int r=0; r<7; r++) {
+      rowdisable();
+      sendrow(r, msg);
+      sendrow(r, msg+16);
+      rowenable();
+      delay(1);
+      rowdisable();
+    }
   }
 }
 
@@ -303,6 +254,5 @@ void loop() {
         // try to display for 1 second, meaning we get an opportunity to read a new message once per second
         Serial.print('.');
 	displaymsg(localmsg, 1000);
-	//displaymsgold(localmsg, 1000);
     }
 }
