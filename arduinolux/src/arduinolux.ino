@@ -1,9 +1,27 @@
 /*
  * Use an arduino to drive our translux display (it has 4x32 LED modules, each 5x7 pixels)
+ *
+ * Note: the pin connections for the 2x5 connector are as follows:
+ *
+ *            +----+
+ *   gnd top  |2  1| clk top
+ *   gnd top  |4  3| input top
+ * enable top |5  6| enable bottom
+ * input btm. |7  8| gnd bottom
+ *   clk btm. |10 9| gnd bottom
+ *            +----+
+ *
+ * Note that all the ground pins are tied together on the board. Also note: if you connect
+ * the wrong enable pin, the board will display whatever random data happens to be in the 
+ * shift registers (only one line, since the row select bits will be random too), and never
+ * change no matter what data you send. Not that I would ever spend almost an entire 
+ * Focused Hack Night trying to figure out why the LEDs don't change no matter what data 
+ * I send. Sheesh.
  */
-int txPin        = 11;
-int clockPin     = 12;
-int rowEnablePin = 13;
+
+int clockPin     = 5; // 5, 11
+int txPin        = 6; // 6, 12
+int rowEnablePin = 7; // 7, 13
 
 // font starts at ascii 0x20 (space) and goes up to 0x7e
 unsigned char font1[][5] = {
@@ -181,7 +199,7 @@ void sendrow(int row, char msg[16]) {
 // Once we see data coming in on the serial line, read
 // until we get a newline, no matter what.
 //
-int get_new_msg(char msg[16]) {
+int getnewmsgold(char msg[16]) {
     if (Serial.available() > 0) {
         char newmsg[16];
         for (int i=0; i<16; i++) { newmsg[i] = ' '; }
@@ -210,6 +228,35 @@ int get_new_msg(char msg[16]) {
     return 0;
 }
 
+int getnewmsg(char *msg, int len) {
+    if (Serial.available() > 0) {
+        char newmsg[len];
+        for (int i=0; i<len; i++) { newmsg[i] = ' '; }
+
+        // read until we get a newline, just discard anything that would overflow string
+        int inx = 0;
+        int byteread = ' ';
+        while (true) {
+            byteread = Serial.read();
+            if (byteread < 0) { delay(100); continue; }      // read returns -1 on timeout, delay 100ms then try again
+            if (byteread == '\n' || byteread == '\r') break; // don't include newline in message to display
+
+            if (inx < len) {
+                newmsg[inx++] = char(byteread);
+            }
+        }
+
+        Serial.println();
+	Serial.print("OK, old message: "); Serial.println(msg);
+	for (int i=0; i<len; i++) { msg[i] = newmsg[i]; }
+
+	Serial.print("OK, new message: ");
+	Serial.println(msg);
+	return 1;
+    }
+    return 0;
+}
+
 
 void setup() {
   Serial.begin(9600); // init serial port at 9600 baud
@@ -223,25 +270,39 @@ void setup() {
   digitalWrite(clockPin, LOW);
 }
 
-void displaymsg(char msg[16], int duration_ms) {
-    rowdisable();
+void displaymsgold(char msg[16], int duration_ms) {
     for (int r=0; r<7; r++) {
+        rowdisable();
 	sendrow(r, msg);
+	rowenable();
     }
-    rowenable();
     delay(duration_ms);
     rowdisable();
+    delay(200);
+}
+
+void displaymsg(char msg[32], int duration_ms) {
+  for(int i=0; i<100; i++) {
+  for (int r=0; r<7; r++) {
+    rowdisable();
+    sendrow(r, msg);
+    sendrow(r, msg+16);
+    rowenable();
+    delay(1);
+  }
+  }
 }
 
 void loop() {
-    //                   123456789012346
-    char localmsg[16] = "{ ROGUEHACKLAB "; // compiler zero terminates
-    localmsg[15] = ' ';
+    //                   1234567890123467890123456789012
+    char localmsg[32] = "{ ROGUE HACK LAB "; // compiler zero terminates
+    localmsg[31] = ' ';
 
     while (true) {
-	get_new_msg(localmsg);
+        getnewmsg(localmsg, 32);
         // try to display for 1 second, meaning we get an opportunity to read a new message once per second
         Serial.print('.');
 	displaymsg(localmsg, 1000);
+	//displaymsgold(localmsg, 1000);
     }
 }
