@@ -19,9 +19,19 @@
  * I send. Sheesh.
  */
 
-int clockPin     = 5; // 5, 11
-int txPin        = 6; // 6, 12
-int rowEnablePin = 7; // 7, 13
+typedef struct _linePins {
+  int clock, data, rowEnable;
+} linePins;
+
+linePins pins[2] = {
+  // { clk, data, rowEnable}
+     {   5,    6,         7}, // first line of LEDs
+     {  11,   12,        13}  // second line of LEDs
+};
+
+//int clockPin     = 5; // 5, 11
+//int txPin        = 6; // 6, 12
+//int rowEnablePin = 7; // 7, 13
 
 // font starts at ascii 0x20 (space) and goes up to 0x7e
 unsigned char font1[][5] = {
@@ -126,26 +136,26 @@ unsigned char font1[][5] = {
 };
 
 // pulse serial clock high
-void scl() {
-    digitalWrite(clockPin, LOW);
-    digitalWrite(clockPin, HIGH);
-    digitalWrite(clockPin, LOW);
+void scl(int line) {
+    digitalWrite(pins[line].clock, LOW);
+    digitalWrite(pins[line].clock, HIGH);
+    digitalWrite(pins[line].clock, LOW);
 }
 
 // turn on row LEDs
-void rowenable() {
-    digitalWrite(rowEnablePin, LOW);
+void rowenable(int line) {
+    digitalWrite(pins[line].rowEnable, LOW);
 }
 
 // turn off row LEDs
-void rowdisable() {
-    digitalWrite(rowEnablePin, HIGH);
+void rowdisable(int line) {
+    digitalWrite(pins[line].rowEnable, HIGH);
 }
 
 // clock 1 data bit out on the tx pin
-void serbit(int bit) {
-    digitalWrite(txPin, (bit ? HIGH : LOW));
-    scl();
+void serbit(int line, int bit) {
+    digitalWrite(pins[line].data, (bit ? HIGH : LOW));
+    scl(line);
 }
 
 // our font data is all indexed by character, so font[c] -> {byte1, byte2, ... byte5}
@@ -172,16 +182,20 @@ unsigned char rowdots(int row, char c) {
 // send the 80 bits that correspond to a row slice out of
 // the character images in msg[], then the 3 row select bits
 // for an 83 bit frame, total
-void sendrow(int row, char msg[16]) {
+void sendrow(int line, int row, char msg[16]) {
     if (row < 0 || row > 6) { return; }
+
+    // send the 80 pixel bits
     for (int i=0; i<16; i++) {
         unsigned char rowbyte = rowdots(row, msg[i]);
         for (int bitpos = 0; bitpos < 5; bitpos++) {
-            serbit((rowbyte>>bitpos) & 0x1);
+            serbit(line, (rowbyte>>bitpos) & 0x1);
         }
     }
+
+    // send the 3 "row select" bits
     for (int rn=2; rn>=0; rn--) {
-        serbit((row+1)>>rn & 0x01);
+        serbit(line, (row+1)>>rn & 0x01);
     }
 }
 
@@ -217,42 +231,71 @@ int getnewmsg(char *msg, int len) {
 
 
 void setup() {
-  Serial.begin(9600); // init serial port at 9600 baud
-  
-  pinMode(txPin, OUTPUT);
-  pinMode(clockPin, OUTPUT);
-  pinMode(rowEnablePin, OUTPUT);
+  for (int line=0; line < 2; line++) {
+      pinMode(pins[line].rowEnable, OUTPUT);
+      rowdisable(line);
+      pinMode(pins[line].clock,     OUTPUT);
+      pinMode(pins[line].data,      OUTPUT);
+      
+      digitalWrite(pins[line].clock, LOW);
+      digitalWrite(pins[line].data,  LOW);
+  }
 
-  rowdisable();
-  digitalWrite(txPin, LOW);
-  digitalWrite(clockPin, LOW);
+  Serial.begin(9600); // init serial port at 9600 baud
 }
 
-void displaymsg(char msg[32], int duration_ms) {
+void displaymsg(int line, char msg[32], int duration_ms) {
   // we have to send rows 1 at a time, then dwell for long enough for the image to persist
   int duration_cycles = duration_ms / 7;
 
   for(int i=0; i<duration_cycles; i++) {
     for (int r=0; r<7; r++) {
-      rowdisable();
-      sendrow(r, msg);
-      sendrow(r, msg+16);
-      rowenable();
+      rowdisable(line);
+      sendrow(line, r, msg);
+      sendrow(line, r, msg+16);
+      rowenable(line);
       delay(1);
-      rowdisable();
+      rowdisable(line);
+    }
+  }
+}
+
+void displaymsgs(char msg0[32], char msg1[32], int duration_ms) {
+  // we have to send rows 1 at a time, then dwell for long enough for the image to persist
+  int duration_cycles = duration_ms / 7;
+
+  for(int i=0; i<duration_cycles; i++) {
+    for (int r=0; r<7; r++) {
+      rowdisable(0);
+      rowdisable(1);
+
+      sendrow(0, r, msg0);
+      sendrow(0, r, msg0+16);
+      sendrow(1, r, msg1);
+      sendrow(1, r, msg1+16);
+
+      rowenable(0);
+      rowenable(1);
+
+      delay(1);
+      rowdisable(0);
+      rowdisable(1);
     }
   }
 }
 
 void loop() {
-    //                   1234567890123467890123456789012
-    char localmsg[32] = "{ ROGUE HACK LAB "; // compiler zero terminates
-    localmsg[31] = ' ';
+    //               1234567890123467890123456789012
+    char msg0[32] = "{ ROGUE HACK LAB               "; // compiler zero terminates
+    char msg1[32] = "  Open Hack Night, Wed 6:30pm  "; // compiler zero terminates
+    //char msg0[32] = "{ ROGUE HACK LAB               "; // compiler zero terminates
+    msg0[31] = ' ';
+    msg1[31] = ' ';
 
     while (true) {
-        getnewmsg(localmsg, 32);
+        getnewmsg(msg0, 32);
         // try to display for 1 second, meaning we get an opportunity to read a new message once per second
         Serial.print('.');
-	displaymsg(localmsg, 1000);
+	displaymsgs(msg0, msg1, 1000);
     }
 }
