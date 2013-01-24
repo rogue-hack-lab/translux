@@ -29,10 +29,6 @@ linePins pins[2] = {
      {  11,   12,        13}  // second line of LEDs
 };
 
-//int clockPin     = 5; // 5, 11
-//int txPin        = 6; // 6, 12
-//int rowEnablePin = 7; // 7, 13
-
 // font starts at ascii 0x20 (space) and goes up to 0x7e
 unsigned char font1[][5] = {
 {0x00, 0x00, 0x00, 0x00, 0x00}, // (space)
@@ -287,15 +283,16 @@ void displaymsgs(char msg0[32], char msg1[32], int duration_ms) {
 void loop() {
     //               1234567890123467890123456789012
     char msg0[32] = "{ ROGUE HACK LAB               "; // compiler zero terminates
-    char msg1[32] = "  Open Hack Night, Wed 6:30pm  "; // compiler zero terminates
+    char msg1[32] = "  Focused Hack Night, Mon 6pm  "; // compiler zero terminates
     //char msg0[32] = "{ ROGUE HACK LAB               "; // compiler zero terminates
     msg0[31] = ' ';
     msg1[31] = ' ';
 
     while (true) {
-        getnewmsg(msg0, 32);
+        getnewmsg(msg1, 32);
         // try to display for 1 second, meaning we get an opportunity to read a new message once per second
         Serial.print('.');
 	displaymsgs(msg0, msg1, 1000);
+	delay(200); // leave off for 200ms per cycle
     }
 }
