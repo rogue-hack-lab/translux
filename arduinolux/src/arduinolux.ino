@@ -195,8 +195,71 @@ void sendrow(int line, int row, char msg[16]) {
     }
 }
 
+//
+// Precalculate all the row-oriented data in packed bytes for
+// sending via shiftOut
+//
+void rendermsg(char msg[32], char msgbits[7][20]) {
+  for (int row=0; row < 7; row++) {
 
-int getnewmsg(char *msg, int len) {
+    // zero all bytes in output first
+    for (int c=0; c < 20; c++) { msgbits[row][c] = 0; }
+
+    int renderedbyte = 0;
+    int renderedbit = 0;
+    
+    for (int srcbyte=0; srcbyte < 32; srcbyte++) {
+      unsigned char rowbyte = rowdots(row, msg[srcbyte]);
+      for (int srcbit=0; srcbit < 5; srcbit++) {
+	// do stuff
+	int bvalue = ((rowbyte>>srcbit) & 0x1);
+	msgbits[row][renderedbyte] |= (bvalue << renderedbit);
+	
+	renderedbit++;
+	if (renderedbit == 8) {
+	  renderedbit = 0;
+	  renderedbyte++;
+	}
+      }
+    }
+  }
+}
+
+//
+// only send the row as arg to figure out 3 rowbits to put out, otherwise we are pre-selected
+//
+void sendrowbits(int line, int row, char msgbits[10]) {
+    // send the 80 pixel bits
+    for (int i=0; i<10; i++) {
+	shiftOut(pins[line].data, pins[line].clock, LSBFIRST, msgbits[i]);
+    }
+
+    // send the 3 "row select" bits
+    for (int rn=2; rn>=0; rn--) {
+        serbit(line, (row+1)>>rn & 0x01);
+    }
+}
+
+//
+// Ok, *really* need to figure out what the interface/handshaking should look like.
+// 
+// Considering, initial byte gives type of command, rest of the data follows.
+//
+// 1<data up to newline> 
+//  reset message line 1 (same for 2, 3, 4)
+//
+// b<160 * 7 * 4 bits>
+//  send the board all pre-rendered data
+//
+// e\n
+//  erase board
+//
+// various commands to adjust delays, durations, scrolling, etc.?
+//
+//
+// Right now, all we do is read data until a newline, store it in msg1
+//
+int getnewmsg(char *msg, int len, char msgbits[7][20]) {
     if (Serial.available() > 0) {
         char newmsg[len];
         for (int i=0; i<len; i++) { newmsg[i] = ' '; }
@@ -220,6 +283,8 @@ int getnewmsg(char *msg, int len) {
 
 	Serial.print("OK, new message: ");
 	Serial.println(msg);
+
+	rendermsg(msg, msgbits);
 	return 1;
     }
     return 0;
@@ -240,6 +305,8 @@ void setup() {
   Serial.begin(9600); // init serial port at 9600 baud
 }
 
+// Just display one line
+//
 void displaymsg(int line, char msg[32], int duration_ms) {
   // we have to send rows 1 at a time, then dwell for long enough for the image to persist
   int duration_cycles = duration_ms / 7;
@@ -256,9 +323,13 @@ void displaymsg(int line, char msg[32], int duration_ms) {
   }
 }
 
+// The "naiive" version of the display code, with our column oriented font data.
+// Should fix to use the row oriented stuff that John checked in.
+//
 void displaymsgs(char msg0[32], char msg1[32], int duration_ms) {
   // we have to send rows 1 at a time, then dwell for long enough for the image to persist
-  int duration_cycles = duration_ms / 7;
+  int row_dwell_ms = 1;
+  int duration_cycles = duration_ms / (7 * row_dwell_ms);
 
   for(int i=0; i<duration_cycles; i++) {
     for (int r=0; r<7; r++) {
@@ -273,7 +344,38 @@ void displaymsgs(char msg0[32], char msg1[32], int duration_ms) {
       rowenable(0);
       rowenable(1);
 
-      delay(1);
+      delay(row_dwell_ms);
+      rowdisable(0);
+      rowdisable(1);
+    }
+  }
+}
+
+// Use the pre-calculated bits, packed into full bytes, so that we try
+// to speed up our output code and reduce flicker.
+// 
+// This is probably still too slow to do all 4 lines at once w/ arduino,
+// investigate SPI stuff? Sharing clock lines?  Not sure what to do.
+//
+void fastdisplay(char msgbits0[7][20], char msgbits1[7][20], int duration_ms) {
+  // we have to send rows 1 at a time, then dwell for long enough for the image to persist
+  int row_dwell_ms = 1;
+  int duration_cycles = duration_ms / (7 * row_dwell_ms);
+
+  for(int i=0; i<duration_cycles; i++) {
+    for (int r=0; r<7; r++) {
+      rowdisable(0);
+      rowdisable(1);
+
+      sendrowbits(0, r, msgbits0[r]);
+      sendrowbits(0, r, msgbits0[r]+10);
+      sendrowbits(1, r, msgbits1[r]);
+      sendrowbits(1, r, msgbits1[r]+10);
+
+      rowenable(0);
+      rowenable(1);
+
+      delay(row_dwell_ms);
       rowdisable(0);
       rowdisable(1);
     }
@@ -288,11 +390,33 @@ void loop() {
     msg0[31] = ' ';
     msg1[31] = ' ';
 
+    // pre-calculate all the bits into full byte sized arrays so we can use
+    // shiftOut to make it fast enough for less flicker.  Still need to investigate the SPI 
+    // library stuff.
+    char msgbits0[7][20];
+    char msgbits1[7][20];
+    
+    rendermsg(msg0, msgbits0);
+    rendermsg(msg1, msgbits1);
+
     while (true) {
-        getnewmsg(msg1, 32);
-        // try to display for 1 second, meaning we get an opportunity to read a new message once per second
+        getnewmsg(msg1, 32, msgbits1); // get to read new msg every 1+.3+1+.3 == 2.6 seconds
+
+        Serial.print('.');
+	fastdisplay(msgbits0, msgbits1, 1000);
+	delay(300); // leave off for 300ms per cycle
+	fastdisplay(msgbits1, msgbits0, 1000); // flip messages over each time
+	delay(300);
+    }
+
+    /*
+    while (true) {
+        getnewmsg(msg1, 32, msgbits1);
         Serial.print('.');
 	displaymsgs(msg0, msg1, 1000);
-	delay(200); // leave off for 200ms per cycle
+	delay(300);
+	displaymsgs(msg1, msg0, 1000);
+	delay(300);
     }
+    */
 }
