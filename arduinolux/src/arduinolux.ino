@@ -6,8 +6,8 @@
  *            +----+
  *   gnd top  |2  1| clk top
  *   gnd top  |4  3| input top
- * enable top |5  6| enable bottom
- * input btm. |7  8| gnd bottom
+ * enable top |6  5| enable bottom
+ * input btm. |8  7| gnd bottom
  *   clk btm. |10 9| gnd bottom
  *            +----+
  *
@@ -17,17 +17,68 @@
  * change no matter what data you send. Not that I would ever spend almost an entire 
  * Focused Hack Night trying to figure out why the LEDs don't change no matter what data 
  * I send. Sheesh.
+ *
+ * PERMANENT BRAIN MODE:
+ * 
+ * Goals:
+ * - reduce the number of pins required
+ * - reduce flicker
+ *
+ * Plan:
+ * Use shared clock and row-enable lines
+ *
+ *      GND     -        black   (black jumper wire)
+ */
+#define CLOCKpin  13 //  brown   (blue jumper wire)
+#define ENABLEpin 12 //  red     (white jumper wire)
+#define DATA1pin  11 //  orange
+#define DATA2pin  10 //  yellow
+#define DATA3pin   9 //  green
+#define DATA4pin   8 //  blue
+/*
+ * 10-Pin Ribbon Cable 1
+ * 1 - clock top      CLK,    13, brown  (blue jmp)
+ * 2 - gnd top        GND      -, black  (black jmp)
+ * 3 - input top      DATA1   11, orange
+ * 4 - gnd top        GND      -, black  (black jmp)
+ * 5 - enable bottom  ENBL    12, red    (white jmp)
+ * 6 - enable top     ENBL    12, red    (white jmp)
+ * 7 - gnd bottom     GND      -, black  (black jmp)
+ * 8 - input bottom   DATA2   10, yellow
+ * 9 - gnd bottom     GND      -, black  (black jmp)
+ * 10- clock bottom   CLK     13, brown  (blue jmp)
+ * 
+ * 10-Pin Ribbon Cable 2
+ * 1 - clock top      CLK     13, brown  (blue)
+ * 2 - gnd top        GND      -, black  (black)
+ * 3 - input top      DATA3    9, green
+ * 4 - gnd top        GND      -, black  (black)
+ * 5 - enable bottom  ENBL    12, red    (white)
+ * 6 - enable top     ENBL    12, red    (white)
+ * 7 - gnd bottom     GND      -, black  (black)
+ * 8 - input bottom   DATA4    8, blue
+ * 9 - gnd bottom     GND      -, black  (black)
+ * 10- clock bottom   CLK     13, brown  (blue)
+ * 
  */
 
-typedef struct _linePins {
-  int clock, data, rowEnable;
-} linePins;
+#define CLOCKbit  5
+#define ENABLEbit 4
+#define DATA1bit  3
+#define DATA2bit  2
+#define DATA3bit  1
+#define DATA4bit  0
 
-linePins pins[2] = {
-  // { clk, data, rowEnable}
-     {   5,    6,         7}, // first line of LEDs
-     {  11,   12,        13}  // second line of LEDs
-};
+#define CLOCKmask   (1<<CLOCKbit)
+#define ENABLEmask  (1<<ENABLEbit)
+#define DATA1mask   (1<<DATA1bit)
+#define DATA2mask   (1<<DATA2bit)
+#define DATA3mask   (1<<DATA3bit)
+#define DATA4mask   (1<<DATA4bit)
+
+int DATAPINS[4] = {DATA1pin, DATA2pin, DATA3pin, DATA4pin};
+int DATABITS[4] = {DATA1bit, DATA2bit, DATA3bit, DATA4bit};
+
 
 // font starts at ascii 0x20 (space) and goes up to 0x7e
 unsigned char font1[][5] = {
@@ -131,28 +182,23 @@ unsigned char font1[][5] = {
 //{0x08, 0x1C, 0x2A, 0x08, 0x08} // <-
 };
 
-// pulse serial clock high
-void scl(int line) {
-    digitalWrite(pins[line].clock, LOW);
-    digitalWrite(pins[line].clock, HIGH);
-    digitalWrite(pins[line].clock, LOW);
+
+void setup() {
+    pinMode(CLOCKpin,  OUTPUT);
+    pinMode(ENABLEpin, OUTPUT);
+    for (int i=0; i<4; i++) { 
+        pinMode(DATAPINS[i], OUTPUT);
+    }
+    
+    digitalWrite(CLOCKpin, LOW);
+    digitalWrite(ENABLEpin, HIGH);
+    for (int i=0; i<4; i++) {
+        digitalWrite(DATAPINS[i], LOW);
+    }
+    
+    Serial.begin(9600); // init serial port at 9600 baud
 }
 
-// turn on row LEDs
-void rowenable(int line) {
-    digitalWrite(pins[line].rowEnable, LOW);
-}
-
-// turn off row LEDs
-void rowdisable(int line) {
-    digitalWrite(pins[line].rowEnable, HIGH);
-}
-
-// clock 1 data bit out on the tx pin
-void serbit(int line, int bit) {
-    digitalWrite(pins[line].data, (bit ? HIGH : LOW));
-    scl(line);
-}
 
 // our font data is all indexed by character, so font[c] -> {byte1, byte2, ... byte5}
 // where each byte is a column of the bit data for the repr of that char
@@ -175,70 +221,147 @@ unsigned char rowdots(int row, char c) {
     return result;
 }
 
-// send the 80 bits that correspond to a row slice out of
-// the character images in msg[], then the 3 row select bits
-// for an 83 bit frame, total
-void sendrow(int line, int row, char msg[16]) {
-    if (row < 0 || row > 6) { return; }
-
-    // send the 80 pixel bits
-    for (int i=0; i<16; i++) {
-        unsigned char rowbyte = rowdots(row, msg[i]);
-        for (int bitpos = 0; bitpos < 5; bitpos++) {
-            serbit(line, (rowbyte>>bitpos) & 0x1);
+void rendermsgbits(char msg[4][32], byte msgbits[7][20][4]) {
+    for (int row=0; row < 7; row++) {
+        
+        // zero all bytes in output first
+        for (int cpos=0; cpos<20; cpos++) {
+            for (int line=0; line < 4; line++) { msgbits[row][cpos][line] = 0; }
+        }
+        
+        int renderedbyte = 0;
+        int renderedbit = 0;
+        
+        for (int srcbyte=0; srcbyte < 32; srcbyte++) {
+            unsigned char rowbytes[4];
+            rowbytes[0] = rowdots(row, msg[0][srcbyte]);
+            rowbytes[1] = rowdots(row, msg[1][srcbyte]);
+            rowbytes[2] = rowdots(row, msg[2][srcbyte]);
+            rowbytes[3] = rowdots(row, msg[3][srcbyte]);
+            
+            for (int srcbit=0; srcbit < 5; srcbit++) {
+                // do stuff
+                for (int i=0; i<4; i++) {
+                    int bvalue = ((rowbytes[i]>>srcbit) & 0x1);
+                    msgbits[row][renderedbyte][i] |= (bvalue << renderedbit);
+                }
+                renderedbit++;
+                if (renderedbit == 8) {
+                    renderedbit = 0;
+                    renderedbyte++;
+                }
+            }
         }
     }
+}
 
-    // send the 3 "row select" bits
-    for (int rn=2; rn>=0; rn--) {
-        serbit(line, (row+1)>>rn & 0x01);
+inline void clockLow() {
+  digitalWrite(CLOCKpin, LOW);
+}
+
+inline void clockHigh() {
+  digitalWrite(CLOCKpin, HIGH);
+}
+
+inline void setData(int dataPin, bool value) {
+  digitalWrite(dataPin, value);
+}
+
+void rowdisable() {
+    digitalWrite(ENABLEpin, 1);
+}
+
+void rowenable() {
+    digitalWrite(ENABLEpin, 0);
+}
+
+void allDataLow() {
+    for (int i=0; i<4; i++) {
+        digitalWrite(DATAPINS[i], LOW);
     }
 }
 
-//
-// Precalculate all the row-oriented data in packed bytes for
-// sending via shiftOut
-//
-void rendermsg(char msg[32], char msgbits[7][20]) {
-  for (int row=0; row < 7; row++) {
+void shiftOutMultiple(byte b[4]) {
+    for (int i=0; i<8; i++) {
+        clockLow();
+        setData(DATA1pin, b[0] & (1<<i));
+        setData(DATA2pin, b[1] & (1<<i));
+        setData(DATA3pin, b[2] & (1<<i));
+        setData(DATA4pin, b[3] & (1<<i));
+        clockHigh();
+    }
+    allDataLow();
+}
 
-    // zero all bytes in output first
-    for (int c=0; c < 20; c++) { msgbits[row][c] = 0; }
+void sendrowbits(int row) {
+    for (int rn=2; rn>=0; rn--) {
+        bool bit = ((row+1)>>rn) & 1;
+        clockLow();
+        for (int i=0; i<4; i++) { digitalWrite(DATAPINS[i], bit); }
+        clockHigh();
+        clockLow();
+        //allDataLow();
+    }
+}
 
-    int renderedbyte = 0;
-    int renderedbit = 0;
+void sendmsgbits(int row, byte msgbits[7][20][4]) {
+    for (int frame=0; frame<2; frame++) {
+        for (int i=0; i<10; i++) {
+            int charpos = (frame*10)+i;
+            shiftOutMultiple(msgbits[row][charpos]);
+        }
+        sendrowbits(row);
+    }
+}
+
+void fastdisplay(byte msgbits[7][20][4], int duration_ms) {
+    // we have to send rows 1 at a time, since the data is fed to the LED drivers 
+    // directly from the serial-to-parallel chips, then we have to dwell for long 
+    // enough for the image to persist
+
+    int row_dwell_ms = 1;
+    int duration_cycles = duration_ms / (7 * row_dwell_ms);
     
-    for (int srcbyte=0; srcbyte < 32; srcbyte++) {
-      unsigned char rowbyte = rowdots(row, msg[srcbyte]);
-      for (int srcbit=0; srcbit < 5; srcbit++) {
-	// do stuff
-	int bvalue = ((rowbyte>>srcbit) & 0x1);
-	msgbits[row][renderedbyte] |= (bvalue << renderedbit);
-	
-	renderedbit++;
-	if (renderedbit == 8) {
-	  renderedbit = 0;
-	  renderedbyte++;
-	}
-      }
-    }
-  }
-}
-
-//
-// only send the row as arg to figure out 3 rowbits to put out, otherwise we are pre-selected
-//
-void sendrowbits(int line, int row, char msgbits[10]) {
-    // send the 80 pixel bits
-    for (int i=0; i<10; i++) {
-	shiftOut(pins[line].data, pins[line].clock, LSBFIRST, msgbits[i]);
-    }
-
-    // send the 3 "row select" bits
-    for (int rn=2; rn>=0; rn--) {
-        serbit(line, (row+1)>>rn & 0x01);
+    for(int i=0; i<duration_cycles; i++) {
+        for (int r=0; r<7; r++) {
+            rowdisable();
+            sendmsgbits(r, msgbits);
+            rowenable();
+            delay(row_dwell_ms);
+        }
     }
 }
+
+
+void loop() {
+    char msg[4][32] = {"{ ROGUE HACK LAB               ",
+                       "  Focused Hack Night, Mon 6pm  ",
+                       "                               ",
+                       "                               "};
+    // compiler NULL terminates the strings, so explicitly set last byte to ' ' char after.
+    msg[0][31] = ' '; msg[1][31] = ' '; msg[2][31] = ' '; msg[3][31] = ' ';
+
+    byte msgbits[7][20][4];
+
+    // pre-calculate all the bits to send from the message to make our display routine fast
+    rendermsgbits(msg, msgbits);
+
+    while (true) {
+        //getnewmsg(msg[0], 32, portbytes); // FIXME: use interrupts to get new message?
+
+        Serial.print('.');
+	fastdisplay(msgbits, 1000);
+        rowdisable();
+	delay(300); // leave off for 300ms per cycle
+    }
+}
+
+
+
+#if 0
+// =========================================================================
+// -----------  EXPERIMENTAL * NOT WORKING YET  ----------------------------
+// =========================================================================
 
 //
 // Ok, *really* need to figure out what the interface/handshaking should look like.
@@ -259,7 +382,8 @@ void sendrowbits(int line, int row, char msgbits[10]) {
 //
 // Right now, all we do is read data until a newline, store it in msg1
 //
-int getnewmsg(char *msg, int len, char msgbits[7][20]) {
+/*
+int getnewmsg(char *msg, int len, byte portbytes[7][80]) {
     if (Serial.available() > 0) {
         char newmsg[len];
         for (int i=0; i<len; i++) { newmsg[i] = ' '; }
@@ -284,139 +408,115 @@ int getnewmsg(char *msg, int len, char msgbits[7][20]) {
 	Serial.print("OK, new message: ");
 	Serial.println(msg);
 
-	rendermsg(msg, msgbits);
+	renderportbytes(msg, portbytes);
 	return 1;
     }
     return 0;
 }
+*/
 
 
-void setup() {
-  for (int line=0; line < 2; line++) {
-      pinMode(pins[line].rowEnable, OUTPUT);
-      rowdisable(line);
-      pinMode(pins[line].clock,     OUTPUT);
-      pinMode(pins[line].data,      OUTPUT);
-      
-      digitalWrite(pins[line].clock, LOW);
-      digitalWrite(pins[line].data,  LOW);
-  }
 
-  Serial.begin(9600); // init serial port at 9600 baud
-}
-
-// Just display one line
-//
-void displaymsg(int line, char msg[32], int duration_ms) {
-  // we have to send rows 1 at a time, then dwell for long enough for the image to persist
-  int duration_cycles = duration_ms / 7;
-
-  for(int i=0; i<duration_cycles; i++) {
-    for (int r=0; r<7; r++) {
-      rowdisable(line);
-      sendrow(line, r, msg);
-      sendrow(line, r, msg+16);
-      rowenable(line);
-      delay(1);
-      rowdisable(line);
-    }
-  }
-}
-
-// The "naiive" version of the display code, with our column oriented font data.
-// Should fix to use the row oriented stuff that John checked in.
-//
-void displaymsgs(char msg0[32], char msg1[32], int duration_ms) {
-  // we have to send rows 1 at a time, then dwell for long enough for the image to persist
-  int row_dwell_ms = 1;
-  int duration_cycles = duration_ms / (7 * row_dwell_ms);
-
-  for(int i=0; i<duration_cycles; i++) {
-    for (int r=0; r<7; r++) {
-      rowdisable(0);
-      rowdisable(1);
-
-      sendrow(0, r, msg0);
-      sendrow(0, r, msg0+16);
-      sendrow(1, r, msg1);
-      sendrow(1, r, msg1+16);
-
-      rowenable(0);
-      rowenable(1);
-
-      delay(row_dwell_ms);
-      rowdisable(0);
-      rowdisable(1);
-    }
-  }
-}
-
-// Use the pre-calculated bits, packed into full bytes, so that we try
-// to speed up our output code and reduce flicker.
-// 
-// This is probably still too slow to do all 4 lines at once w/ arduino,
-// investigate SPI stuff? Sharing clock lines?  Not sure what to do.
-//
-void fastdisplay(char msgbits0[7][20], char msgbits1[7][20], int duration_ms) {
-  // we have to send rows 1 at a time, then dwell for long enough for the image to persist
-  int row_dwell_ms = 1;
-  int duration_cycles = duration_ms / (7 * row_dwell_ms);
-
-  for(int i=0; i<duration_cycles; i++) {
-    for (int r=0; r<7; r++) {
-      rowdisable(0);
-      rowdisable(1);
-
-      sendrowbits(0, r, msgbits0[r]);
-      sendrowbits(0, r, msgbits0[r]+10);
-      sendrowbits(1, r, msgbits1[r]);
-      sendrowbits(1, r, msgbits1[r]+10);
-
-      rowenable(0);
-      rowenable(1);
-
-      delay(row_dwell_ms);
-      rowdisable(0);
-      rowdisable(1);
-    }
-  }
-}
-
-void loop() {
-    //               1234567890123467890123456789012
-    char msg0[32] = "{ ROGUE HACK LAB               "; // compiler zero terminates
-    char msg1[32] = "  Focused Hack Night, Mon 6pm  "; // compiler zero terminates
-    //char msg0[32] = "{ ROGUE HACK LAB               "; // compiler zero terminates
-    msg0[31] = ' ';
-    msg1[31] = ' ';
-
-    // pre-calculate all the bits into full byte sized arrays so we can use
-    // shiftOut to make it fast enough for less flicker.  Still need to investigate the SPI 
-    // library stuff.
-    char msgbits0[7][20];
-    char msgbits1[7][20];
-    
-    rendermsg(msg0, msgbits0);
-    rendermsg(msg1, msgbits1);
-
-    while (true) {
-        getnewmsg(msg1, 32, msgbits1); // get to read new msg every 1+.3+1+.3 == 2.6 seconds
-
-        Serial.print('.');
-	fastdisplay(msgbits0, msgbits1, 1000);
-	delay(300); // leave off for 300ms per cycle
-	fastdisplay(msgbits1, msgbits0, 1000); // flip messages over each time
-	delay(300);
-    }
-
+/*
+ *   Consider 4 lines of LED modes, where each module has 7 rows and 5 columns:
+ * 
+ *       col 0 1 2 3 4 5           0 1 2 3 4 5
+ *     row 0                     0 * - - * - -      ... etc ...
+ *         1                     1
+ *         2                     3
+ * 
+ * Since each line of LED modules is sharing the same enable pin, we have to send out 4 different
+ * bits on each clock pulse (1 for each line of modules.)
+ *
+ * This handily works out as 2 bits per row of leds for each byte of pre-rendered data.
+ *
+ * So portbytes[2][21] is has data for the 3rd row of leds on each line of modules, where
+ *
+ * bit 8 - input1 bit 1
+ *     7 - input2 bit 1
+ *     6 - input3 bit 1
+ *     5 - input4 bit 1
+ *     4 - input1 bit 2
+ *     3 - input2 bit 2
+ *     2 - input3 bit 2
+ *     1 - input4 bit 2
+ */
+void renderportbytes(char msg[4][32], byte portbytes[7][80]) 
+{
+    // complicated bit math. for now, just put in test pattern
     /*
-    while (true) {
-        getnewmsg(msg1, 32, msgbits1);
-        Serial.print('.');
-	displaymsgs(msg0, msg1, 1000);
-	delay(300);
-	displaymsgs(msg1, msg0, 1000);
-	delay(300);
+    int linebitpos=0;
+
+    for(int charpos=0; charpos<32; charpos++) {
+        unsigned char rowbytes[4];
+        for(int i=0; i<4; i++) { rowbytes[0] = rowdots(0, msg[0][charpos]); }
+        //...
     }
     */
+    for (int i=0; i<80; i++) {
+        for (int j=0; j<7; j++) {
+            portbytes[j][i] = B00001111;
+        }
+    }
 }
+
+// For this version, we have to do an additional pre-compliation step.
+// However, it lets us hold all the data in portbits
+// 
+void sendportbits(int row, // 0 - 6, which line of LEDs on the modules
+                  byte portbits[7][80]) 
+{
+    byte baseByte = B00010000;
+
+    for (int i=0; i<80; i++) {
+        // set clock low, enable off, all data bits 0
+        PORTB = baseByte;
+
+        // send the low 4 bits from byte i as our 4 inputs...
+        PORTB |= (portbits[row][i] & B00001111);
+
+        // pulse clock high
+        bitSet(PORTB, CLOCKbit);
+
+        PORTB = baseByte;
+
+        // send the high 4 bits from byte i as our 4 inputs...
+        PORTB |= (portbits[row][i] >> 4);
+
+        // pulse clock high
+        bitSet(PORTB, CLOCKbit);
+
+        PORTB = baseByte;
+    }
+
+    // send the 3 "row select" bits
+    for (int rn=2; rn>=0; rn--) {
+        int bit = (row+1)>>rn & 0x01;
+        PORTB = baseByte;
+        if (bit) {
+            PORTB |= DATA1bit | DATA2bit | DATA3bit | DATA4bit;
+        }
+        bitSet(PORTB, CLOCKbit);
+        PORTB = baseByte;
+    }
+}
+
+void fastdisplay(byte portbytes[7][80], int duration_ms) {
+    // we have to send rows 1 at a time, since the data is fed to the LED drivers 
+    // directly from the serial-to-parallel chips, then we have to dwell for long 
+    // enough for the image to persist
+
+    int row_dwell_ms = 1;
+    int duration_cycles = duration_ms / (7 * row_dwell_ms);
+    
+    for(int i=0; i<duration_cycles; i++) {
+        for (int r=0; r<7; r++) {
+            rowdisable();
+            sendportbits(r, portbytes);
+            rowenable();
+            delay(row_dwell_ms);
+        }
+    }
+}
+
+#endif
