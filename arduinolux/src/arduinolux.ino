@@ -255,30 +255,57 @@ void rendermsgbits(char msg[4][32], byte msgbits[7][20][4]) {
     }
 }
 
+#define DIRECTIO 1
+
 inline void clockLow() {
-  digitalWrite(CLOCKpin, LOW);
+#ifdef DIRECTIO
+    bitClear(PORTB, CLOCKbit);
+#else
+    digitalWrite(CLOCKpin, LOW);
+#endif
 }
 
 inline void clockHigh() {
-  digitalWrite(CLOCKpin, HIGH);
+#ifdef DIRECTIO
+    bitSet(PORTB, CLOCKbit);
+#else
+    digitalWrite(CLOCKpin, HIGH);
+#endif
 }
 
 inline void setData(int dataPin, bool value) {
-  digitalWrite(dataPin, value);
+#ifdef DIRECTIO
+    if (value) bitSet(PORTB, (dataPin - 8));
+    else bitClear(PORTB, (dataPin - 8));
+#else
+    digitalWrite(dataPin, value);
+#endif
 }
 
 void rowdisable() {
+#ifdef DIRECTIO
+    bitSet(PORTB, ENABLEbit);
+#else
     digitalWrite(ENABLEpin, 1);
+#endif
 }
 
 void rowenable() {
+#ifdef DIRECTIO
+    bitClear(PORTB, ENABLEbit);
+#else
     digitalWrite(ENABLEpin, 0);
+#endif
 }
 
 void allDataLow() {
+#ifdef DIRECTIO
+    PORTB &= B11110000;
+#else
     for (int i=0; i<4; i++) {
         digitalWrite(DATAPINS[i], LOW);
     }
+#endif
 }
 
 void shiftOutMultiple(byte b[4]) {
