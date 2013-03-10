@@ -62,12 +62,37 @@
  * 
  */
 
+// The IO mapped register ports and pins differ for Uno/atmega328p and Leonardo
+// 0 == Uno
+// 1 == Boarduino (atmega328p)
+// 2 == Leonardo
+
+#define BOARD 2
+//#define BOARD 1
+
+#if (BOARD == 2)
+#define CLOCKPORT  PORTC
+#define ENABLEPORT PORTD
+#define DATAPORT   PORTB
+#define CLOCKbit   7 // PC7
+#define ENABLEbit  6 // PD6
+#define DATA1bit   7 // PB7
+#define DATA2bit   6 // PB6
+#define DATA3bit   5 // PB5
+#define DATA4bit   4 // PB4
+
+#else
+
+#define CLOCKPORT  PORTB
+#define ENABLEPORT PORTB
+#define DATAPORT   PORTB
 #define CLOCKbit  5
 #define ENABLEbit 4
 #define DATA1bit  3
 #define DATA2bit  2
 #define DATA3bit  1
 #define DATA4bit  0
+#endif
 
 #define CLOCKmask   (1<<CLOCKbit)
 #define ENABLEmask  (1<<ENABLEbit)
@@ -79,6 +104,8 @@
 int DATAPINS[4] = {DATA1pin, DATA2pin, DATA3pin, DATA4pin};
 int DATABITS[4] = {DATA1bit, DATA2bit, DATA3bit, DATA4bit};
 
+int dataPinToBit[13] = {0, 0, 0, 0, 0, 0, 0, 0, // pins 0 - 7 don't map to anything
+     DATA4bit, DATA3bit, DATA2bit, DATA1bit};
 
 // font starts at ascii 0x20 (space) and goes up to 0x7e
 unsigned char font1[][5] = {
@@ -255,52 +282,57 @@ void rendermsgbits(char msg[4][32], byte msgbits[7][20][4]) {
     }
 }
 
-#define DIRECTIO 1
+// The IO mapped register bits differ between Uno, Boarduino (atmega328p), and Leonardo
+//#define DIRECTIO 0 // NOT using directio
+#define DIRECTIO 1 // USING directio
 
 inline void clockLow() {
-#ifdef DIRECTIO
-    bitClear(PORTB, CLOCKbit);
+#if DIRECTIO
+    bitClear(CLOCKPORT, CLOCKbit);
 #else
     digitalWrite(CLOCKpin, LOW);
 #endif
 }
 
 inline void clockHigh() {
-#ifdef DIRECTIO
-    bitSet(PORTB, CLOCKbit);
+#if DIRECTIO
+    bitSet(CLOCKPORT, CLOCKbit);
 #else
     digitalWrite(CLOCKpin, HIGH);
 #endif
 }
 
 inline void setData(int dataPin, bool value) {
-#ifdef DIRECTIO
-    if (value) bitSet(PORTB, (dataPin - 8));
-    else bitClear(PORTB, (dataPin - 8));
+#if DIRECTIO
+    if (value) 
+        bitSet(DATAPORT, dataPinToBit[dataPin]);
+    else 
+        bitClear(DATAPORT, dataPinToBit[dataPin]);
 #else
     digitalWrite(dataPin, value);
 #endif
 }
 
 void rowdisable() {
-#ifdef DIRECTIO
-    bitSet(PORTB, ENABLEbit);
+#if DIRECTIO
+    bitSet(ENABLEPORT, ENABLEbit);
 #else
     digitalWrite(ENABLEpin, 1);
 #endif
 }
 
 void rowenable() {
-#ifdef DIRECTIO
-    bitClear(PORTB, ENABLEbit);
+#if DIRECTIO
+    bitClear(ENABLEPORT, ENABLEbit);
 #else
     digitalWrite(ENABLEpin, 0);
 #endif
 }
 
 void allDataLow() {
-#ifdef DIRECTIO
-    PORTB &= B11110000;
+#if DIRECTIO
+    //PORTB &= B11110000;
+    DATAPORT ^= DATA1mask | DATA2mask | DATA3mask | DATA4mask;
 #else
     for (int i=0; i<4; i++) {
         digitalWrite(DATAPINS[i], LOW);
@@ -361,10 +393,10 @@ void fastdisplay(byte msgbits[7][20][4], int duration_ms) {
 
 
 void loop() {
-    char msg[4][32] = {"{ ROGUE HACK LAB               ",
+    char msg[4][32] = {"{ ROGUE HACK LAB              {",
                        "  Focused Hack Night, Mon 6pm  ",
-                       "                               ",
-                       "                               "};
+                       "  Open Hack Night, Wed 6:30pm  ",
+                       "  www.roguehacklab.com         "};
     // compiler NULL terminates the strings, so explicitly set last byte to ' ' char after.
     msg[0][31] = ' '; msg[1][31] = ' '; msg[2][31] = ' '; msg[3][31] = ' ';
 
@@ -377,9 +409,9 @@ void loop() {
         //getnewmsg(msg[0], 32, portbytes); // FIXME: use interrupts to get new message?
 
         Serial.print('.');
-	fastdisplay(msgbits, 1000);
+	fastdisplay(msgbits, 2000);
         rowdisable();
-	delay(300); // leave off for 300ms per cycle
+	delay(600); // leave off for 300ms per cycle
     }
 }
 
@@ -547,3 +579,4 @@ void fastdisplay(byte portbytes[7][80], int duration_ms) {
 }
 
 #endif
+
