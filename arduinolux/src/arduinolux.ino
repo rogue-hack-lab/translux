@@ -27,10 +27,11 @@
  * Plan:
  * Use shared clock and row-enable lines
  *
- *      GND     -        black   (black jumper wire)
+ *                     HARNESS   PROTOBOARD-JUMPERS
+ *      GND     -        black   (black)
  */
-#define CLOCKpin  13 //  brown   (blue jumper wire)
-#define ENABLEpin 12 //  red     (white jumper wire)
+#define CLOCKpin  13 //  brown   (blue)
+#define ENABLEpin 12 //  red     (white)
 #define DATA1pin  11 //  orange
 #define DATA2pin  10 //  yellow
 #define DATA3pin   9 //  green
@@ -224,6 +225,7 @@ void setup() {
     }
     
     Serial.begin(9600); // init serial port at 9600 baud
+    //Serial.write("arduinolux firmware v1.0b\r\n");
 }
 
 
@@ -282,7 +284,6 @@ void rendermsgbits(char msg[4][32], byte msgbits[7][20][4]) {
     }
 }
 
-// The IO mapped register bits differ between Uno, Boarduino (atmega328p), and Leonardo
 //#define DIRECTIO 0 // NOT using directio
 #define DIRECTIO 1 // USING directio
 
@@ -331,7 +332,6 @@ void rowenable() {
 
 void allDataLow() {
 #if DIRECTIO
-    //PORTB &= B11110000;
     DATAPORT ^= DATA1mask | DATA2mask | DATA3mask | DATA4mask;
 #else
     for (int i=0; i<4; i++) {
@@ -373,7 +373,7 @@ void sendmsgbits(int row, byte msgbits[7][20][4]) {
     }
 }
 
-void fastdisplay(byte msgbits[7][20][4], int duration_ms) {
+void display(byte msgbits[7][20][4], int duration_ms) {
     // we have to send rows 1 at a time, since the data is fed to the LED drivers 
     // directly from the serial-to-parallel chips, then we have to dwell for long 
     // enough for the image to persist
@@ -387,8 +387,131 @@ void fastdisplay(byte msgbits[7][20][4], int duration_ms) {
             sendmsgbits(r, msgbits);
             rowenable();
             delay(row_dwell_ms);
+            if (Serial.available()) break;
         }
+        rowdisable();
+        if (Serial.available()) break;
     }
+}
+
+void readtonewline() {
+    while (Serial.available()) {
+        int tmp = Serial.read();
+        if (tmp == '\n') break;
+    }
+}
+
+void flushtonewline() {
+    while (Serial.available()) {
+        int b = Serial.read();
+        if (char(b) == '\n') break;
+    }
+}
+
+void flushserial() {
+    if (!Serial.available()) return;
+    Serial.print("flushing serial buffer:\r\n");
+    while (Serial.available()) {
+        int b = Serial.read();
+        Serial.print(b);
+    }
+    Serial.print("\r\n");
+}
+
+#define HELP_CMD       '?'
+#define READ_CMD       'r'
+#define SETLINE_CMD    's'
+#define SETTMPMSG_CMD  'm'
+#define SETPIXELS_CMD  'p'
+#define SETFONT_CMD    'f'
+
+const char help_msg[] = "arduinolux serial interface v0.9, commands are:\r\n"
+    "? (help), r (read current msg), s (set msg for given line), m (set temp msg for whole sign), p (set pixel data directly), f (set font data)\r\n";
+
+// returns true on error (I know, backwards)
+bool readmsglinedata(char msgline[32]) {
+    int i = 0;
+    for (i=0; i<32; i++) { msgline[i] = ' '; }
+
+    i = 0;
+    while (true) {
+        int b = Serial.read();
+        if (b < 0) { delay(10); continue; }
+        if (b == '\r') { break; }
+        if (b == '\n') { break; }
+        Serial.print((char)b);
+        msgline[i] = (char)(b);
+        i++;
+
+        if (i >= 32) break;
+    }
+    return false;
+}
+
+int serialcontrol(char msg[4][32], byte msgbits[7][20][4]) {
+    if (!Serial.available()) return 0;
+
+    bool error = true;
+    int linechar = 0;
+    int lineinx = 0;
+    int i;
+
+    int cmd = Serial.read(); // read the command byte
+
+    //Serial.write((char)(cmd));
+    //Serial.write("\n\r");
+
+    switch(cmd) {
+    case HELP_CMD:
+        Serial.write(help_msg);
+        error = false;
+        break;
+    case READ_CMD:
+        for (i=0; i<4; i++) {
+            Serial.write((const uint8_t *)(msg[i]), 32);
+            Serial.write("\r\n");
+        }
+        error = false;
+        break;
+    case SETLINE_CMD: 
+        Serial.write("type line number (1 - 4):\r\n");
+    getline:
+        linechar = Serial.read(); // read the line number
+        if (linechar == -1) goto getline;
+        lineinx = linechar - '1';
+        //flushtonewline();
+        if (lineinx < 0 || lineinx > 3) {
+            flushtonewline();
+            Serial.write("invalid line number\r\n");
+            error = true;
+        } else {
+            Serial.write("type line data (will truncate to 32 chars):\r\n");
+            error = readmsglinedata(msg[lineinx]);
+            rendermsgbits(msg, msgbits);
+            //Serial.write("done with rendermsgbits\r\n");
+            error = false;
+        }
+        break;
+    case SETTMPMSG_CMD:
+    case SETPIXELS_CMD:
+    case SETFONT_CMD:
+        Serial.write("unimplemented command\r\n");
+        error = true;
+        break;
+    default:
+        Serial.write("unkown command\r\n");
+        error = true;
+        break;
+    }
+
+    if (error) {
+        Serial.write("ERROR\r\n");
+    } else {
+        Serial.write("OK\r\n");
+    }
+
+    flushserial();
+    return error;
 }
 
 
@@ -406,12 +529,11 @@ void loop() {
     rendermsgbits(msg, msgbits);
 
     while (true) {
-        //getnewmsg(msg[0], 32, portbytes); // FIXME: use interrupts to get new message?
+        Serial.print(".\r\n");
+	display(msgbits, 2000);
+        serialcontrol(msg, msgbits);
 
-        Serial.print('.');
-	fastdisplay(msgbits, 2000);
-        rowdisable();
-	delay(600); // leave off for 300ms per cycle
+        delay(600); // leave off for 300ms per cycle
     }
 }
 
@@ -473,110 +595,6 @@ int getnewmsg(char *msg, int len, byte portbytes[7][80]) {
     return 0;
 }
 */
-
-
-
-/*
- *   Consider 4 lines of LED modes, where each module has 7 rows and 5 columns:
- * 
- *       col 0 1 2 3 4 5           0 1 2 3 4 5
- *     row 0                     0 * - - * - -      ... etc ...
- *         1                     1
- *         2                     3
- * 
- * Since each line of LED modules is sharing the same enable pin, we have to send out 4 different
- * bits on each clock pulse (1 for each line of modules.)
- *
- * This handily works out as 2 bits per row of leds for each byte of pre-rendered data.
- *
- * So portbytes[2][21] is has data for the 3rd row of leds on each line of modules, where
- *
- * bit 8 - input1 bit 1
- *     7 - input2 bit 1
- *     6 - input3 bit 1
- *     5 - input4 bit 1
- *     4 - input1 bit 2
- *     3 - input2 bit 2
- *     2 - input3 bit 2
- *     1 - input4 bit 2
- */
-void renderportbytes(char msg[4][32], byte portbytes[7][80]) 
-{
-    // complicated bit math. for now, just put in test pattern
-    /*
-    int linebitpos=0;
-
-    for(int charpos=0; charpos<32; charpos++) {
-        unsigned char rowbytes[4];
-        for(int i=0; i<4; i++) { rowbytes[0] = rowdots(0, msg[0][charpos]); }
-        //...
-    }
-    */
-    for (int i=0; i<80; i++) {
-        for (int j=0; j<7; j++) {
-            portbytes[j][i] = B00001111;
-        }
-    }
-}
-
-// For this version, we have to do an additional pre-compliation step.
-// However, it lets us hold all the data in portbits
-// 
-void sendportbits(int row, // 0 - 6, which line of LEDs on the modules
-                  byte portbits[7][80]) 
-{
-    byte baseByte = B00010000;
-
-    for (int i=0; i<80; i++) {
-        // set clock low, enable off, all data bits 0
-        PORTB = baseByte;
-
-        // send the low 4 bits from byte i as our 4 inputs...
-        PORTB |= (portbits[row][i] & B00001111);
-
-        // pulse clock high
-        bitSet(PORTB, CLOCKbit);
-
-        PORTB = baseByte;
-
-        // send the high 4 bits from byte i as our 4 inputs...
-        PORTB |= (portbits[row][i] >> 4);
-
-        // pulse clock high
-        bitSet(PORTB, CLOCKbit);
-
-        PORTB = baseByte;
-    }
-
-    // send the 3 "row select" bits
-    for (int rn=2; rn>=0; rn--) {
-        int bit = (row+1)>>rn & 0x01;
-        PORTB = baseByte;
-        if (bit) {
-            PORTB |= DATA1bit | DATA2bit | DATA3bit | DATA4bit;
-        }
-        bitSet(PORTB, CLOCKbit);
-        PORTB = baseByte;
-    }
-}
-
-void fastdisplay(byte portbytes[7][80], int duration_ms) {
-    // we have to send rows 1 at a time, since the data is fed to the LED drivers 
-    // directly from the serial-to-parallel chips, then we have to dwell for long 
-    // enough for the image to persist
-
-    int row_dwell_ms = 1;
-    int duration_cycles = duration_ms / (7 * row_dwell_ms);
-    
-    for(int i=0; i<duration_cycles; i++) {
-        for (int r=0; r<7; r++) {
-            rowdisable();
-            sendportbits(r, portbytes);
-            rowenable();
-            delay(row_dwell_ms);
-        }
-    }
-}
 
 #endif
 
