@@ -36,6 +36,8 @@
 #define DATA2pin  10 //  yellow
 #define DATA3pin   9 //  green
 #define DATA4pin   8 //  blue
+
+#define PHOTOpin  A0
 /*
  * 10-Pin Ribbon Cable 1
  * 1 - clock top      CLK,    13, brown  (blue jmp)
@@ -223,7 +225,9 @@ void setup() {
     for (int i=0; i<4; i++) {
         digitalWrite(DATAPINS[i], LOW);
     }
-    
+
+    pinMode(PHOTOpin, INPUT);
+
     Serial.begin(9600); // init serial port at 9600 baud
     //Serial.write("arduinolux firmware v1.0b\r\n");
 }
@@ -529,7 +533,8 @@ void loop() {
     rendermsgbits(msg, msgbits);
 
     while (true) {
-        Serial.print(".\r\n");
+        int photoValue = analogRead(PHOTOpin);
+        Serial.print(photoValue); Serial.print(".\r\n");
 	display(msgbits, 2000);
         serialcontrol(msg, msgbits);
 
