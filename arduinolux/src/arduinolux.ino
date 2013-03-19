@@ -532,10 +532,17 @@ void loop() {
     // pre-calculate all the bits to send from the message to make our display routine fast
     rendermsgbits(msg, msgbits);
 
+    const int photoLimit = 300;
     while (true) {
         int photoValue = analogRead(PHOTOpin);
-        Serial.print(photoValue); Serial.print(".\r\n");
-	display(msgbits, 2000);
+        Serial.print("photoResistor reading: "); Serial.print(photoValue);
+        if (photoValue > photoLimit) {
+            Serial.print("/1024 ON\r\n");
+            display(msgbits, 2000);
+        } else {
+            Serial.print("/1024 OFF\r\n");
+            display(msgbits, 10);
+        }
         serialcontrol(msg, msgbits);
 
         delay(600); // leave off for 300ms per cycle

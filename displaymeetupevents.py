@@ -60,7 +60,8 @@ def flushserialin():
         sys.stdout.write(f.read())
     print
     
-sdev = "/dev/ttyUSB0"
+#sdev = "/dev/ttyUSB0"
+sdev = "/dev/ttyACM0"
 baud = 9600
 sdelay = 6
 
