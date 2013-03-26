@@ -532,7 +532,9 @@ void loop() {
     // pre-calculate all the bits to send from the message to make our display routine fast
     rendermsgbits(msg, msgbits);
 
-    const int photoLimit = 300;
+    // photoresistor seems pretty sensitive. reading 64 @ 7:12pm on March 21, sun is down at home, not sure about Medford
+    const int photoLimit = 15;
+
     while (true) {
         int photoValue = analogRead(PHOTOpin);
         Serial.print("photoResistor reading: "); Serial.print(photoValue);
