@@ -27,29 +27,28 @@ BUILD:
 1.  make yourself an account on lab.roguehacklab.com and add yourself to the 
     'dialout' group to have r/w access to the Leonardo board on /dev/ttyACM0
     
-    > rhl@lab> sudo adduser YOURUSER
-    >
-    > rhl@lab> sudo adduser YOURUSER dialout
+        rhl@lab> sudo adduser YOURUSER
+        rhl@lab> sudo adduser YOURUSER dialout
 
 2.  Log into your new account, and check out this project
 
     If you want to commit changes, get set up as part of the rogue-hack-lab
     github organization, then:
     
-    > YOURNAME@lab> git clone git@github.com:rogue-hack-lab/translux.git
+        YOURNAME@lab> git clone git@github.com:rogue-hack-lab/translux.git
     
     To get a read only git clone:
     
-    > YOURNAME@lab> git clone https://github.com/rogue-hack-lab/translux.git
+        YOURNAME@lab> git clone https://github.com/rogue-hack-lab/translux.git
 
 3.  Build your copy of the tree
     
-    > YOURNAME@lab> cd translux/arduinolux
-    > YOURNAME@lab> ino build
+        YOURNAME@lab> cd translux/arduinolux
+        YOURNAME@lab> ino build
 
 4.  Upload to the sign:
     
-    > YOURNAME@lab> ino upload
+        YOURNAME@lab> ino upload
     
     Make fabulous improvements, and commit :)
 
