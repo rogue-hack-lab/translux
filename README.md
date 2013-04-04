@@ -52,3 +52,42 @@ BUILD:
     
     Make fabulous improvements, and commit :)
 
+READING & WRITING TO THE SIGN
+-----------------------------
+
+The sign should be powered on and the arduino connected to lab.roguehacklab.com
+via USB normally. If you connect to the serial port, you will see diagnostic messages
+being written periodically.
+
+    YOURNAME@lab> cd translux/arduinolux
+    YOURNAME@lab> ino serial
+
+This connects to the default serial-port configured in translux/arduinolux/ino.ini 
+configuration file using picocom (a minicom clone terminal.) The commands that the 
+arduino responds to on the serial interface are in translux/arduinolux/src/arduinolux.ino
+
+    ?: help, prints a little usage message
+    r: read, responds with the current message being displayed by the sign
+    s: set line, use like 's2This is my new line two' will set line 2 (of 1 - 4) to 'This is my new line two'
+    m: temporary message, not yet implemented
+    p: pixel data, not yet implemented
+    f: set font data, not yet implemented
+
+UPDATING SIGN FROM MEETUP DATA
+------------------------------
+
+There is a pre-written script to set the sign to display the next 3 upcomming meetup events.
+You need to set a meetup API authentication key in your shell's environment so that the 
+script can talk to meetup servers.
+
+1.  Find your meetup account's API key:
+    
+    Go to [meetup api authentication key page](http://www.meetup.com/meetup_api/key/)
+
+        YOURNAME@lab> cd translux
+        YOURNAME@lab> export MEETUP_API_KEY=<value from website above>
+
+2.  Run the script:
+    
+        YOURNAME@lab> ./displaymeetupevents.py
+
