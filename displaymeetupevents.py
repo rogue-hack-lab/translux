@@ -12,7 +12,7 @@ import os, curl, json, time, serial, sys, apikeys
 # http://www.meetup.com/meetup_api/key/
 # then set it as an environment variable, however your platform of choice does
 # that.
-key = os.getenv('apikeys.MEETUP_API_KEY')
+key = os.getenv(apikeys.MEETUP_APP_KEY)
 
 # not sure how you are "supposed" to figure this out
 # I got it by messing around w/ the console api tool, looking up orgs
