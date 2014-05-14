@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, curl, json, time, serial, sys
+import os, curl, json, time, serial, sys, apikeys
 
 # Even the read only meetup api requests require authentication. The simplest
 # thing to do is to use a single account key to authenticate. However, this
@@ -12,7 +12,7 @@ import os, curl, json, time, serial, sys
 # http://www.meetup.com/meetup_api/key/
 # then set it as an environment variable, however your platform of choice does
 # that.
-key = os.getenv('MEETUP_API_KEY')
+key = os.getenv('apikeys.MEETUP_API_KEY')
 
 # not sure how you are "supposed" to figure this out
 # I got it by messing around w/ the console api tool, looking up orgs

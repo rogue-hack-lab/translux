@@ -9,21 +9,19 @@ from twython import Twython, TwythonError
 #to keep API keys out of version control create apikeys.py. 
 #it onlyneeds to contain the two definitions below
 import apikeys, time, sys, os, serial
-APP_KEY = apikeys.APP_KEY
-APP_SECRET = apikeys.APP_SECRET
 
 #requires Authentication as of Twitter API v1.1
-twitter = Twython(APP_KEY, APP_SECRET)
+twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET)
 
 #define what strings you are searching Twitter for and how many of each result you wish to see.
-tags = ['#trtt2014']#,'tinkerfest','RogueHackLab','#ScienceWorks', '@Soupala']
-results_per_tag = 1
+tags = ['#trtt2014']#, 'tinkerfest', 'RogueHackLab', '#ScienceWorks', '@Soupala']
+results_per_tag = 5
 	
 def GetTweets(String, Count):
 	try:
 		search_results = twitter.search(q=String, count=Count)
 	except TwythonError as e:
-		print (e)
+		print e
 	return search_results
 
 def TweetDict(tags, results_per_tag):
@@ -54,7 +52,7 @@ def BreakToLines(text, lineLength):
 			beg = end
 		else:
 			lines.append(text[beg:len(text)])
-		print ("%s    %s" % (beg,end))
+		print "%s    %s" % (beg,end)
 	return lines
 
 	
@@ -64,12 +62,11 @@ tweets = TweetDict(tags, results_per_tag)
 for s in tweets.values():
 	text = TweetCleaner(s['text'])
 	ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(s['created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
-	lines = BreakToLines(text, 32)
-	for line in lines:
-		print (line)
-	
-	#line_1 = text[0:31]
-	#line_2 = text[32:63]
-	#line_3 = text[64:95]
-	#line_4 = text[96:125 - len(s['user']['screen_name'])] + " -@" + s['user']['screen_name']
-	#print ("%s \n %s \n %s \n %s \n" % (line_1, line_2, line_3, line_4))
+	#lines = BreakToLines(text, 32)
+	#for line in lines:
+	#	print line
+	line_1 = text[0:31]
+	line_2 = text[32:63]
+	line_3 = text[64:95]
+	line_4 = text[96:125 - len(s['user']['screen_name'])] + " -@" + s['user']['screen_name']
+	print "%s \n %s \n %s \n %s \n" % (line_1, line_2, line_3, line_4)
