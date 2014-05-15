@@ -20,6 +20,7 @@ REQUIREMENTS:
 
 - ino tools as of 2013-03-14 via http://inotools.org
 - arduino 1.0.4 (1.0.3 doesn't seem to support the leonardo board)
+- twython - https://github.com/ryanmcgrath/twython - pip install twython
 
 BUILD:
 ------
