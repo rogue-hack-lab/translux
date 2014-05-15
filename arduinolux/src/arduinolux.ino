@@ -521,7 +521,7 @@ int serialcontrol(char msg[4][32], byte msgbits[7][20][4]) {
 
 void loop() {
     char msg[4][32] = {"{ ROGUE HACK LAB              {",
-                       "  Focused Hack Night, Mon 6pm  ",
+                       "  Member Night,    Tue 6:00pm  ",
                        "  Open Hack Night, Wed 6:30pm  ",
                        "  www.roguehacklab.com         "};
     // compiler NULL terminates the strings, so explicitly set last byte to ' ' char after.
