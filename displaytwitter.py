@@ -61,7 +61,6 @@ tweets = TweetDict(tags, results_per_tag)
 
 for s in tweets.values():
 	if s['text'][0:2].encode('utf-8') != "RT":
-		print "--------------------------------------------------"
 		text = s['text'].encode('utf-8') #TweetCleaner(s['text']).encode('utf-8')
 		ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(s['created_at'],'%a %b %d %H:%M:%S +0000 %Y')) #'%a %b %d %H:%M:%S +0000 %Y'))
 		lines = BreakToLines(text, 32)

@@ -19,7 +19,10 @@ REQUIREMENTS:
 -------------
 
 - ino tools as of 2013-03-14 via http://inotools.org
-- arduino 1.0.4 (1.0.3 doesn't seem to support the leonardo board)
+- picocom - apt-get install picocom
+- arduino 1.0.4 (1.0.3 doesn't seem to support the leonardo board) 
+     - sudo apt-get does not install the necessary version of arduino
+	 - see http://tech.cyborg5.com/2013/05/30/irlib-tutorial-part-3d-installing-the-arduino-ide-on-a-raspberry-pi/
 - twython - https://github.com/ryanmcgrath/twython - pip install twython
 
 BUILD:
@@ -74,6 +77,8 @@ arduino responds to on the serial interface are in translux/arduinolux/src/ardui
     p: pixel data, not yet implemented
     f: set font data, not yet implemented
 
+	add - How to exit picocom
+	
 UPDATING SIGN FROM MEETUP DATA
 ------------------------------
 
