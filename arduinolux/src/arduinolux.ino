@@ -383,7 +383,7 @@ void display(byte msgbits[7][20][4], int duration_ms) {
     // enough for the image to persist
 
     int row_dwell_ms = 1;
-    int duration_cycles = duration_ms / (7 * row_dwell_ms);
+    int duration_cycles = duration_ms / (35 * row_dwell_ms);
     
     for(int i=0; i<duration_cycles; i++) {
         for (int r=0; r<7; r++) {
@@ -540,7 +540,7 @@ void loop() {
         Serial.print("photoResistor reading: "); Serial.print(photoValue);
         if (photoValue > photoLimit) {
             Serial.print("/1024 ON\r\n");
-            display(msgbits, 2000);
+            display(msgbits, 5000);
         } else {
             Serial.print("/1024 OFF\r\n");
             display(msgbits, 10);
