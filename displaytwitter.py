@@ -68,3 +68,39 @@ for s in tweets.values():
 			for line in BreakToLines(text, 32):
 				print line
 			print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
+
+			
+			
+#The Arduino-Translux part - copied from displaymeetupevents.py
+#todo: make this its own python scipt and include
+def flushserialin():
+    print "Reading from serial port..."
+    time.sleep(1)
+    while f.inWaiting():
+        sys.stdout.write(f.read())
+    print
+    
+#sdev = "/dev/ttyUSB0"
+sdev = "/dev/ttyACM0"
+baud = 9600
+sdelay = 6
+
+print "Opening serial port", sdev, "at", baud, "baud..."
+f = serial.Serial(sdev, baud)
+print "Waiting", sdelay, "seconds for board to reset before we send serial data..."
+time.sleep(sdelay)
+
+print "Sending help command..."
+f.write("?")
+flushserialin()
+
+for i in xrange(4):
+    print "Setting line", i+1, "data"
+    f.write("s%d%s\r\n" % (i+1, tweets[i]))
+    flushserialin()
+
+print "Requesting current msg data..."
+f.write("r")
+flushserialin()
+
+f.close()
