@@ -94,7 +94,10 @@ for s in tweets.values():
 		if len(lines) > 1:
 			print len(lines)
 			for i in range(len(lines[:5])):
+				f.write("s%d%s\r\n" % (i+1, msg[i]))
+				flushserialin()
 				print lines[i]
+time.sleep(10)
 			#for line in BreakToLines(text, 32):
 			#	print line
 			#print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
