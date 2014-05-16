@@ -59,15 +59,7 @@ def BreakToLines(text, lineLength):
 	
 tweets = TweetDict(tags, results_per_tag)
 
-for s in tweets.values():
-	if s['text'][0:2].encode('utf-8') != "RT":
-		text = s['text'].encode('utf-8') #TweetCleaner(s['text']).encode('utf-8')
-		ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(s['created_at'],'%a %b %d %H:%M:%S +0000 %Y')) #'%a %b %d %H:%M:%S +0000 %Y'))
-		lines = BreakToLines(text, 32)
-		if len(lines) > 1:
-			for line in BreakToLines(text, 32):
-				print line
-			print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
+
 
 			
 			
@@ -94,10 +86,18 @@ print "Sending help command..."
 f.write("?")
 flushserialin()
 
-for i in xrange(4):
-    print "Setting line", i+1, "data"
-    f.write("s%d%s\r\n" % (i+1, tweets[i]))
-    flushserialin()
+for s in tweets.values():
+	if s['text'][0:2].encode('utf-8') != "RT":
+		text = s['text'].encode('utf-8') #TweetCleaner(s['text']).encode('utf-8')
+		ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(s['created_at'],'%a %b %d %H:%M:%S +0000 %Y')) #'%a %b %d %H:%M:%S +0000 %Y'))
+		lines = BreakToLines(TweetCleaner(text), 32)
+		if len(lines) > 1:
+			print len(lines)
+			for i in range(len(lines[:5])):
+				print lines[i]
+			#for line in BreakToLines(text, 32):
+			#	print line
+			#print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
 
 print "Requesting current msg data..."
 f.write("r")
