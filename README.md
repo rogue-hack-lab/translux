@@ -18,7 +18,7 @@ arduinolux/src/arduinolux.ino file into a sketch first.
 REQUIREMENTS:
 -------------
 
-- ino tools as of 2013-03-14 via http://inotools.org
+- ino tools as of 2013-03-14 via http://inotool.org
 - picocom - apt-get install picocom
 - arduino 1.0.4 (1.0.3 doesn't seem to support the leonardo board) 
      - sudo apt-get does not install the necessary version of arduino
@@ -48,7 +48,7 @@ BUILD:
 3.  Build your copy of the tree
     
         YOURNAME@lab> cd translux/arduinolux
-        YOURNAME@lab> ino build
+        YOURNAME@lab> ino build (--verbose if you want to observe)
 
 4.  Upload to the sign:
     
@@ -96,4 +96,3 @@ script can talk to meetup servers.
 2.  Run the script:
     
         YOURNAME@lab> ./displaymeetupevents.py
-
