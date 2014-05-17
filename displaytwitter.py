@@ -64,44 +64,53 @@ def flushserialin():
         sys.stdout.write(f.read())
     print
 
-
-#sdev = "/dev/ttyUSB0"
-sdev = "/dev/ttyACM0"
-baud = 9600
-sdelay = 6
-
 #initialize Serial Port
-print "Opening serial port", sdev, "at", baud, "baud..."
-f = serial.Serial(sdev, baud)
-print "Waiting", sdelay, "seconds for board to reset before we send serial data..."
-time.sleep(sdelay)
+try:
+	#sdev = "/dev/ttyUSB0"
+	sdev = "/dev/ttyACM0"
+	baud = 9600
+	sdelay = 6
+	f = serial.Serial(sdev, baud)
+	print "Initializing connection to Translux\r\n"
+	time.sleep(sdelay)
+	serialConnected = True	
+except:
+	print "Translux not connected. Program will run in Python window only\r\n"
+	serialConnected = False
 
-#Initialize Tweets Dictionary
-tweets[]
-tweets.update = TweetDict(tags, results_per_tag)
-tweetCounter = {}
+#Initialize Tweets Dictionary and playcount
+tweets = {}
+tweets.update(TweetDict(tags, results_per_tag))
+	#Good info about built in counters http://stackoverflow.com/questions/1692388/python-list-of-dict-if-exists-increment-a-dict-value-if-not-append-a-new-dic
+tweets_d = defaultdict(int)
+for tweet in tweets:
+	tweets_d[tweet] == 0
 
+print len(tweets), "tweets cached"
+
+print tweets_d.keys()[3]
 
 #display a tweet
-for s in tweets.values():
-	if s['text'][0:2].encode('utf-8') != "RT":
-		text = s['text'].encode('utf-8') #TweetCleaner(s['text']).encode('utf-8')
-		ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(s['created_at'],'%a %b %d %H:%M:%S +0000 %Y')) #'%a %b %d %H:%M:%S +0000 %Y'))
-		lines = BreakToLines(TweetCleaner(text), 32)
-		if len(lines) > 1:
-			print len(lines)
-			for i in range(len(lines[:5])):
-				f.write("s%d%s\r\n" % (i+1, msg[i]))
-				flushserialin()
-				print lines[i]
-time.sleep(10)
-			#for line in BreakToLines(text, 32):
-			#	print line
-			#print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
+for t in tweets:
+	print "Playcount: ", tweets_d[t]
+	tweet = tweets[t]
+	text = tweet['text'].encode('utf-8')
+	ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(tweet['created_at'],'%a %b %d %H:%M:%S +0000 %Y')) 
+	lines = BreakToLines(TweetCleaner(text), 32)
+	for i in range(len(lines[:5])):
+		print lines[i]
+		if serialConnected:
+			f.write("s%d%s\r\n" % (i+1, msg[i]))
+			flushserialin()
+	time.sleep(1) #amount of seconds to display each message
+	print "\n"
+	#for line in BreakToLines(text, 32):
+	#	print line
+	#print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
 
 
-print "Requesting current msg data..."
-f.write("r")
-flushserialin()
-
-f.close()
+if serialConnected:
+	print "Requesting current msg data..."
+	f.write("r")
+	flushserialin()
+	f.close()
