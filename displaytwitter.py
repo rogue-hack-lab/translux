@@ -24,7 +24,9 @@ tags = ['#trtt2014', 'tinkerfest', 'RogueHackLab', 'ScienceWorks', '#RHLTweetLux
 results_per_tag = 5
 
 #rate at which new strings are displayed in seconds
-interval = 6
+#API calls are limited to 5 seconds per call or more accurately 180 calls per 15 minutes
+	#https://dev.twitter.com/docs/rate-limiting/1.1
+interval = 5
 
 
 
@@ -35,16 +37,16 @@ def TweetDict(tags, results_per_tag):
 	for tag in tags:
 		search_results = GetTweets(tag, results_per_tag)
 		for tweet in search_results['statuses']:
-			#if tweet['id'] not in t:
-			t[tweet['id']] = tweet #"%s \n %s \n~@%s" % (tweet['created_at'], tweet['text'].encode('utf-8'), tweet['user']['screen_name'].encode('utf-8'))
+			if tweet['retweeted'] == False:
+				t[tweet['id']] = tweet #"%s \n %s \n~@%s" % (tweet['created_at'], tweet['text'].encode('utf-8'), tweet['user']['screen_name'].encode('utf-8'))
 	return t	
 
 def GetTweets(String, Count):
 	try:
 		search_results = twitter.search(q=String, count=Count)
 	except TwythonError as e:
-		print "ERROR: ", e
-		quit()
+		ts = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
+		print ts, " ERROR: ", e, "\n\n\n"
 	return search_results
 
 
@@ -108,19 +110,19 @@ tweets_d = defaultdict(int)
 for tweet in tweets:
 	tweets_d[tweet]
 
-print len(tweets), "tweets cached"
 
 
-
-
+count = 0
 #display tweets in a loop
-#API calls are limited to 5 seconds per call or more accurately 180 calls per 15 minutes
-	#https://dev.twitter.com/docs/rate-limiting/1.1
-while True:
-	tweets.update(TweetDict(tags, results_per_tag))
+while True:	
+	while count == 5:
+		print "Updating Tweet Cache\n"
+		tweets.update(TweetDict(tags, results_per_tag))
+		print "cached tweet count: ", len(tweets)
+		count = 0
+	count += 1
 	for tweet in tweets:
 		tweets_d[tweet]
-	print "cached tweet count: ", len(tweets)
 	t = min(tweets_d, key=tweets_d.get)
 	tweet = tweets[t]
 	text = tweet['text'].encode('utf-8')
