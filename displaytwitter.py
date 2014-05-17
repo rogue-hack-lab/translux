@@ -4,21 +4,33 @@
 ##Documentation
 #twitter - https://dev.twitter.com/docs
 #twython - http://twython.readthedocs.org/en/latest/
+
 from twython import Twython, TwythonError
 from collections import defaultdict
+import apikeys, time, sys, os, serial
 
 #to keep API keys out of version control create apikeys.py. 
 #it onlyneeds to contain the two definitions below
-import apikeys, time, sys, os, serial
-
 #requires Authentication as of Twitter API v1.1
 twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET)
 
-#define what strings you are searching Twitter for and how many of each result you wish to see.
-tags = ['#trtt2014', 'tinkerfest', 'RogueHackLab', 'ScienceWorks', '@Soupala']
+
+
+
+#what strings to search Twitter for
+tags = ['#trtt2014', 'tinkerfest', 'RogueHackLab', 'ScienceWorks', '#RHLTweetLux']
+
+#how many tweets from each tag
 results_per_tag = 5
 
+#rate at which new strings are displayed in seconds
+interval = 6
+
+
+
+
 def TweetDict(tags, results_per_tag):
+	'''creates a dictionary object containing {key==tweet[ID] : value==tweet[all values]}'''
 	t = {}
 	for tag in tags:
 		search_results = GetTweets(tag, results_per_tag)
@@ -31,7 +43,8 @@ def GetTweets(String, Count):
 	try:
 		search_results = twitter.search(q=String, count=Count)
 	except TwythonError as e:
-		print e
+		print "ERROR: ", e
+		quit()
 	return search_results
 
 
@@ -57,7 +70,8 @@ def BreakToLines(text, lineLength):
 			lines.append(text[beg:len(text)])
 			beg = len(text)
 	return lines
-
+	#print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
+	#ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(tweet['created_at'],'%a %b %d %H:%M:%S +0000 %Y')) 
 def flushserialin():
     print "Reading from serial port..."
     time.sleep(1)
@@ -65,6 +79,9 @@ def flushserialin():
         sys.stdout.write(f.read())
     print
 
+	
+	
+	
 #initialize Serial Port
 try:
 	#sdev = "/dev/ttyUSB0"
@@ -79,37 +96,52 @@ except:
 	print "Translux not connected. Program will run in Python window only\r\n"
 	serialConnected = False
 
+	
+	
+	
 #Initialize Tweets Dictionary and playcount
 tweets = {}
 tweets.update(TweetDict(tags, results_per_tag))
 	#Good info about built in counters http://stackoverflow.com/questions/1692388/python-list-of-dict-if-exists-increment-a-dict-value-if-not-append-a-new-dic
 tweets_d = defaultdict(int)
+
 for tweet in tweets:
-	tweets_d[tweet] == 0
+	tweets_d[tweet]
 
 print len(tweets), "tweets cached"
 
-print tweets_d.keys()[3]
 
-#display a tweet
-for t in tweets:
-	print "Playcount: ", tweets_d[t]
+
+
+#display tweets in a loop
+#API calls are limited to 5 seconds per call or more accurately 180 calls per 15 minutes
+	#https://dev.twitter.com/docs/rate-limiting/1.1
+while True:
+	tweets.update(TweetDict(tags, results_per_tag))
+	for tweet in tweets:
+		tweets_d[tweet]
+	print "cached tweet count: ", len(tweets)
+	t = min(tweets_d, key=tweets_d.get)
 	tweet = tweets[t]
 	text = tweet['text'].encode('utf-8')
-	ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(tweet['created_at'],'%a %b %d %H:%M:%S +0000 %Y')) 
+	print "--------------------------------"
 	lines = BreakToLines(TweetCleaner(text), 32)
-	for i in range(len(lines[:5])):
+	lines.append("-- @%s --" % (tweet['user']['screen_name'].encode('utf-8')))
+	for i in range(len(lines)): #add [:5] to this in order to fit on TransLux
 		print lines[i]
 		if serialConnected:
 			f.write("s%d%s\r\n" % (i+1, msg[i]))
 			flushserialin()
-	time.sleep(1) #amount of seconds to display each message
+	print "-  -  -  -  -  -  -  -  -  -  -"
+	tweets_d[t] += 1
+	print "Playcount: ", tweets_d[t]
+	print "--------------------------------"
+	time.sleep(interval) 
 	print "\n"
-	#for line in BreakToLines(text, 32):
-	#	print line
-	#print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
 
-
+	
+	
+#close serial
 if serialConnected:
 	print "Requesting current msg data..."
 	f.write("r")
