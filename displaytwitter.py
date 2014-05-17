@@ -16,13 +16,6 @@ twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET)
 #define what strings you are searching Twitter for and how many of each result you wish to see.
 tags = ['#trtt2014', 'tinkerfest', 'RogueHackLab', 'ScienceWorks', '@Soupala']
 results_per_tag = 5
-	
-def GetTweets(String, Count):
-	try:
-		search_results = twitter.search(q=String, count=Count)
-	except TwythonError as e:
-		print e
-	return search_results
 
 def TweetDict(tags, results_per_tag):
 	t = {}
@@ -31,7 +24,16 @@ def TweetDict(tags, results_per_tag):
 		for tweet in search_results['statuses']:
 			#if tweet['id'] not in t:
 			t[tweet['id']] = tweet #"%s \n %s \n~@%s" % (tweet['created_at'], tweet['text'].encode('utf-8'), tweet['user']['screen_name'].encode('utf-8'))
-	return t
+	return t	
+
+def GetTweets(String, Count):
+	try:
+		search_results = twitter.search(q=String, count=Count)
+	except TwythonError as e:
+		print e
+	return search_results
+
+
 
 def TweetCleaner(tweetText):
 	h = tweetText.find('http')
@@ -55,37 +57,32 @@ def BreakToLines(text, lineLength):
 			beg = len(text)
 	return lines
 
-	
-	
-tweets = TweetDict(tags, results_per_tag)
-
-
-
-			
-			
-#The Arduino-Translux part - copied from displaymeetupevents.py
-#todo: make this its own python scipt and include
 def flushserialin():
     print "Reading from serial port..."
     time.sleep(1)
     while f.inWaiting():
         sys.stdout.write(f.read())
     print
-    
+
+
 #sdev = "/dev/ttyUSB0"
 sdev = "/dev/ttyACM0"
 baud = 9600
 sdelay = 6
 
+#initialize Serial Port
 print "Opening serial port", sdev, "at", baud, "baud..."
 f = serial.Serial(sdev, baud)
 print "Waiting", sdelay, "seconds for board to reset before we send serial data..."
 time.sleep(sdelay)
 
-print "Sending help command..."
-f.write("?")
-flushserialin()
+#Initialize Tweets Dictionary
+tweets[]
+tweets.update = TweetDict(tags, results_per_tag)
+tweetCounter = {}
 
+
+#display a tweet
 for s in tweets.values():
 	if s['text'][0:2].encode('utf-8') != "RT":
 		text = s['text'].encode('utf-8') #TweetCleaner(s['text']).encode('utf-8')
@@ -101,6 +98,7 @@ time.sleep(10)
 			#for line in BreakToLines(text, 32):
 			#	print line
 			#print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
+
 
 print "Requesting current msg data..."
 f.write("r")
