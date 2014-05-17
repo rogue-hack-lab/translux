@@ -5,6 +5,7 @@
 #twitter - https://dev.twitter.com/docs
 #twython - http://twython.readthedocs.org/en/latest/
 from twython import Twython, TwythonError
+from collections import defaultdict
 
 #to keep API keys out of version control create apikeys.py. 
 #it onlyneeds to contain the two definitions below
@@ -37,11 +38,11 @@ def GetTweets(String, Count):
 
 def TweetCleaner(tweetText):
 	h = tweetText.find('http')
-	if h != -1:
-		i = tweetText[0:h-1] + " " + tweetText[h + 24:len(tweetText)]
-	else:
-		i = tweetText
-	return i
+	if h != -1 and len(tweetText) > 128:
+		tweetText = tweetText[0:h-1] + " " + tweetText[h + 24:len(tweetText)]
+	if tweetText[0:2] == "RT":
+		tweetText = tweetText[3:]
+	return tweetText
 
 def BreakToLines(text, lineLength):
 	lines = []
