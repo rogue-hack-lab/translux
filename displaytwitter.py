@@ -7,7 +7,7 @@
 
 from twython import Twython, TwythonError
 from collections import defaultdict
-import apikeys, time, sys, os, serial
+import apikeys, time, sys, os, serial, threading
 
 #to keep API keys out of version control create apikeys.py. 
 #it onlyneeds to contain the two definitions below
@@ -29,7 +29,32 @@ results_per_tag = 5
 interval = 5
 
 
+#init objects
+tweets = {}
+tweets_d = defaultdict(int)
 
+def updateCache():
+	'''A background process that checks for new tweets every (cacheInterval) seconds'''
+	#Initialize Tweets Dictionary and playcount
+	tweets.update(TweetDict(tags, results_per_tag))
+		#Good info about built in counters http://stackoverflow.com/questions/1692388/python-list-of-dict-if-exists-increment-a-dict-value-if-not-append-a-new-dic
+	
+	for tweet in tweets:
+		tweets_d[tweet]
+	
+	while True:
+		'''if len(tweets) > cacheMaxCount:
+			print "### Cache reset to zero  ###"
+			tweets.clear()'''
+		print "\n############################"
+		print "### Updating Tweet Cache ###"
+		tweets.update(TweetDict(tags, results_per_tag))
+		for tweet in tweets:
+			tweets_d[tweet]
+		print "###  ", len(tweets), 'tweets cached   ###'
+		print "############################"
+		print tweets_d.values(), "\n"
+		time.sleep(cacheInterval)
 
 def TweetDict(tags, results_per_tag):
 	'''creates a dictionary object containing {key==tweet[ID] : value==tweet[all values]}'''
@@ -48,8 +73,6 @@ def GetTweets(String, Count):
 		ts = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
 		print ts, " ERROR: ", e, "\n\n\n"
 	return search_results
-
-
 
 def TweetCleaner(tweetText):
 	h = tweetText.find('http')
@@ -99,30 +122,14 @@ except:
 	serialConnected = False
 
 	
-	
-	
-#Initialize Tweets Dictionary and playcount
-tweets = {}
-tweets.update(TweetDict(tags, results_per_tag))
-	#Good info about built in counters http://stackoverflow.com/questions/1692388/python-list-of-dict-if-exists-increment-a-dict-value-if-not-append-a-new-dic
-tweets_d = defaultdict(int)
+#start tweet caching thread
+thread = threading.Thread(target=updateCache)
+e = threading.Event()
+thread.start()
+time.sleep(5)
 
-for tweet in tweets:
-	tweets_d[tweet]
-
-
-
-count = 0
 #display tweets in a loop
 while True:	
-	while count == 5:
-		print "Updating Tweet Cache\n"
-		tweets.update(TweetDict(tags, results_per_tag))
-		print "cached tweet count: ", len(tweets)
-		count = 0
-	count += 1
-	for tweet in tweets:
-		tweets_d[tweet]
 	t = min(tweets_d, key=tweets_d.get)
 	tweet = tweets[t]
 	text = tweet['text'].encode('utf-8')
