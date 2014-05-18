@@ -34,7 +34,7 @@ displayInterval = 20 #default == 7
 #number of tweets displayed between each API call to Twitter
 #API calls are limited to 5 seconds per call or more accurately 180 calls per 15 minutes
 	#https://dev.twitter.com/docs/rate-limiting/1.1
-cacheInterval = 20 #default == 20
+#cacheInterval = 20 #default == 20
 cacheMaxCount = 50
 
 #init objects
@@ -42,6 +42,7 @@ tweets = {}
 tweets_d = defaultdict(int)
 
 def updateCache():
+	cacheInterval = 20 #default == 20
 	'''A background process that checks for new tweets every (cacheInterval) seconds'''
 	#Initialize Tweets Dictionary and playcount
 	tweets.update(TweetDict(tags, results_per_tag))
@@ -51,7 +52,6 @@ def updateCache():
 		tweets_d[tweet]
 	
 	while True:
-		cacheInterval = cacheInterval
 		'''if len(tweets) > cacheMaxCount:
 			print "### Cache reset to zero  ###"
 			tweets.clear()'''
@@ -167,9 +167,9 @@ while True:
 		lines.append("             { Tinkerfest 2014 {")
 	print "--------------------------------"
 	if tweets_d[t] == 0:
-		print "**********NEW TWEET!!!**********"
 		tweets_d[t] = 1
-		print "-  -  -  -  -  -  -  -  -  -  -"
+		print "----------NEW TWEET-------------"
+		print "--------------------------------"
 	for i in range(len(lines)):
 		print lines[i]
 	if serialConnected:
