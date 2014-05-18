@@ -117,8 +117,12 @@ def BreakToLines(text, lineLength):
 	return lines
 	
 def PushToLux(list):
+	push = []
 	for i in [0,1,2,len(list) - 1]: #add [:5] to this in order to fit on TransLux
-		f.write("s%d%s\r\n" % (i+1, msg[i]))
+		push.append(list[i])
+	for i in push:	
+		print push[i]
+		f.write("s%d%s\r\n" % (i+1, push[i]))
 		flushserialin()
 
 	
