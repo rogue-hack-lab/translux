@@ -21,8 +21,8 @@ twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET)
 #what strings to search Twitter for
 tags = [
 	'@KevinRConner','@RogueHackLab','@Soupala',		#MENTIONS
-	'#ScienceWorks','#RHLTweetLux','#trtt2014',  	#HASHTAGS
-	'Science Works','tinkerfest','Rogue Hack Lab'	#STRINGS
+	'#RHLTweetLux','#trtt2014',  	#HASHTAGS
+	'tinkerfest','Rogue Hack Lab'	#STRINGS
 	] 	
 print 'Search Terms:\n', tags, '\n'
 
@@ -118,9 +118,8 @@ def BreakToLines(text, lineLength):
 	
 def PushToLux(list):
 	for i in [0,1,2,len(list) - 1]: #add [:5] to this in order to fit on TransLux
-		print list[i]
-		#f.write("s%d%s\r\n" % (i+1, msg[i]))
-		#flushserialin()
+		f.write("s%d%s\r\n" % (i+1, msg[i]))
+		flushserialin()
 
 	
 def flushserialin():

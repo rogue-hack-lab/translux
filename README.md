@@ -18,8 +18,8 @@ arduinolux/src/arduinolux.ino file into a sketch first.
 REQUIREMENTS:
 -------------
 
-- ino tools as of 2013-03-14 via http://inotool.org
-- picocom - apt-get install picocom
+- ino tools as of 2013-03-14 via inotool.org
+- picocom 	- apt-get install picocom
 - arduino 1.0.4 (1.0.3 doesn't seem to support the leonardo board) 
      - sudo apt-get does not install the necessary version of arduino
 	 - see http://tech.cyborg5.com/2013/05/30/irlib-tutorial-part-3d-installing-the-arduino-ide-on-a-raspberry-pi/
