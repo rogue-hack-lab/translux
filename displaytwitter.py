@@ -55,13 +55,13 @@ def updateCache():
 		'''if len(tweets) > cacheMaxCount:
 			print "### Cache reset to zero  ###"
 			tweets.clear()'''
-		print "\n############################"
-		print "### Updating Tweet Cache ###"
+		print "\n################################"
+		print "##    Updating Tweet Cache    ##"
 		tweets.update(TweetDict(tags, results_per_tag))
 		for tweet in tweets:
 			tweets_d[tweet]
-		print "###  ", len(tweets), 'tweets cached   ###'
-		print "############################"
+		print "##     %03d tweets cached      ##" % (len(tweets))
+		print "################################"
 		time.sleep(cacheInterval)
 
 def TweetDict(tags, results_per_tag):
