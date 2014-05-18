@@ -6,6 +6,7 @@
 #twython - http://twython.readthedocs.org/en/latest/
 
 from twython import Twython, TwythonError
+from random import randint
 from collections import defaultdict
 import apikeys, time, sys, os, serial, threading
 
@@ -29,20 +30,19 @@ print 'Search Terms:\n', tags, '\n'
 results_per_tag = 1 #default == 5
 
 #length of time each string is displayed in seconds
-displayInterval = 20 #default == 7
+displayInterval = 7 #default == 7
 
 #number of tweets displayed between each API call to Twitter
 #API calls are limited to 5 seconds per call or more accurately 180 calls per 15 minutes
 	#https://dev.twitter.com/docs/rate-limiting/1.1
-#cacheInterval = 20 #default == 20
+cacheInterval = 20 #default == 20
 cacheMaxCount = 50
 
 #init objects
 tweets = {}
 tweets_d = defaultdict(int)
 
-def updateCache():
-	cacheInterval = 20 #default == 20
+def updateCache(cacheInterval):
 	'''A background process that checks for new tweets every (cacheInterval) seconds'''
 	#Initialize Tweets Dictionary and playcount
 	tweets.update(TweetDict(tags, results_per_tag))
@@ -97,7 +97,7 @@ def GetTweets(String, Count):
 
 def TweetCleaner(tweetText):
 	h = tweetText.find('http')
-	if h != -1 and len(tweetText) > 128:
+	if h != -1:
 		tweetText = tweetText[0:h-1] + " " + tweetText[h + 24:len(tweetText)]
 	if tweetText[0:2] == "RT":
 		tweetText = tweetText[3:]
@@ -149,7 +149,7 @@ except:
 
 	
 #start tweet caching thread
-thread = threading.Thread(target=updateCache)
+thread = threading.Thread(target=updateCache, args=(cacheInterval,))
 e = threading.Event()
 thread.start()
 time.sleep(5)
@@ -157,7 +157,10 @@ time.sleep(5)
 #display tweets in a loop
 while True:	
 	t = min(tweets_d, key=tweets_d.get)
-	tweet = tweets[t]
+	if tweets_d[t] == 0:
+		tweet = tweets[t]
+	else:
+		tweet = tweets.values()[randint(0,len(tweets) - 1)]
 	text = tweet['text'].encode('utf-8')
 	lines = BreakToLines(TweetCleaner(text), 32)
 	lines.append("-- @%s --" % (tweet['user']['screen_name'].encode('utf-8')))

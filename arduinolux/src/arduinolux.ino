@@ -540,7 +540,7 @@ void loop() {
         Serial.print("photoResistor reading: "); Serial.print(photoValue);
         if (photoValue > photoLimit) {
             Serial.print("/1024 ON\r\n");
-            display(msgbits, 5000);
+            display(msgbits, 50000);
         } else {
             Serial.print("/1024 OFF\r\n");
             display(msgbits, 10);
