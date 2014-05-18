@@ -18,16 +18,24 @@ twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET)
 
 
 #what strings to search Twitter for
-tags = ['#trtt2014', 'tinkerfest', 'RogueHackLab', 'ScienceWorks', '#RHLTweetLux']
+tags = [
+	'@KevinRConner','@RogueHackLab','@Soupala',		#MENTIONS
+	'#ScienceWorks','#RHLTweetLux','#trtt2014',  	#HASHTAGS
+	'Science Works','tinkerfest','Rogue Hack Lab'	#STRINGS
+	] 	
+print 'Search Terms:\n', tags, '\n'
 
 #how many tweets from each tag
-results_per_tag = 5
+results_per_tag = 1 #default == 5
 
-#rate at which new strings are displayed in seconds
+#length of time each string is displayed in seconds
+displayInterval = 20 #default == 7
+
+#number of tweets displayed between each API call to Twitter
 #API calls are limited to 5 seconds per call or more accurately 180 calls per 15 minutes
 	#https://dev.twitter.com/docs/rate-limiting/1.1
-interval = 5
-
+cacheInterval = 20 #default == 20
+cacheMaxCount = 50
 
 #init objects
 tweets = {}
@@ -43,6 +51,7 @@ def updateCache():
 		tweets_d[tweet]
 	
 	while True:
+		cacheInterval = cacheInterval
 		'''if len(tweets) > cacheMaxCount:
 			print "### Cache reset to zero  ###"
 			tweets.clear()'''
@@ -53,7 +62,6 @@ def updateCache():
 			tweets_d[tweet]
 		print "###  ", len(tweets), 'tweets cached   ###'
 		print "############################"
-		print tweets_d.values(), "\n"
 		time.sleep(cacheInterval)
 
 def TweetDict(tags, results_per_tag):
@@ -67,11 +75,24 @@ def TweetDict(tags, results_per_tag):
 	return t	
 
 def GetTweets(String, Count):
-	try:
-		search_results = twitter.search(q=String, count=Count)
-	except TwythonError as e:
-		ts = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
-		print ts, " ERROR: ", e, "\n\n\n"
+	while True:
+		try:
+			search_results = twitter.search(q=String, count=Count)
+		except TwythonError as e:
+			ts = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
+			print ts, "\nUnable to Update Feed\nERROR:", e, "\n"
+			wait = 1 #default == 5
+			while wait != 0:
+				if wait == 1:
+					print "waiting", wait, "minute before attempting next cache\n"
+				else:
+					print "waiting", wait, "minutes before attempting next cache\n"
+				time.sleep(60)
+				wait -= 1
+			cacheInterval += 5
+			print "cache interval increased to", cacheInterval
+			continue
+		break
 	return search_results
 
 def TweetCleaner(tweetText):
@@ -86,17 +107,22 @@ def BreakToLines(text, lineLength):
 	lines = []
 	beg = 0
 	end = 0
-	while (beg + lineLength < len(text)):
-		if beg + lineLength < len(text):
-			end = text[beg:lineLength + beg].rfind(' ') + beg
-			lines.append(text[beg:end])
-			beg = end + 1
+	while beg < len(text):
+		if lineLength + beg < len(text):
+			end = beg + text[beg:lineLength + beg].rfind(' ')
 		else:
-			lines.append(text[beg:len(text)])
-			beg = len(text)
+			end = len(text)
+		lines.append(text[beg:end])
+		beg = end + 1
 	return lines
-	#print "--@ %s --" % (s['user']['screen_name'].encode('utf-8'))
-	#ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(tweet['created_at'],'%a %b %d %H:%M:%S +0000 %Y')) 
+	
+def PushToLux(list):
+	for i in [0,1,2,len(list) - 1]: #add [:5] to this in order to fit on TransLux
+		print list[i]
+		#f.write("s%d%s\r\n" % (i+1, msg[i]))
+		#flushserialin()
+
+	
 def flushserialin():
     print "Reading from serial port..."
     time.sleep(1)
@@ -133,19 +159,23 @@ while True:
 	t = min(tweets_d, key=tweets_d.get)
 	tweet = tweets[t]
 	text = tweet['text'].encode('utf-8')
-	print "--------------------------------"
 	lines = BreakToLines(TweetCleaner(text), 32)
 	lines.append("-- @%s --" % (tweet['user']['screen_name'].encode('utf-8')))
-	for i in range(len(lines)): #add [:5] to this in order to fit on TransLux
-		print lines[i]
-		if serialConnected:
-			f.write("s%d%s\r\n" % (i+1, msg[i]))
-			flushserialin()
-	print "-  -  -  -  -  -  -  -  -  -  -"
-	tweets_d[t] += 1
-	print "Playcount: ", tweets_d[t]
+	if len(lines) == 2:
+		lines.append("")
+	if len(lines) == 3:
+		lines.append("             { Tinkerfest 2014 {")
 	print "--------------------------------"
-	time.sleep(interval) 
+	if tweets_d[t] == 0:
+		print "**********NEW TWEET!!!**********"
+		tweets_d[t] = 1
+		print "-  -  -  -  -  -  -  -  -  -  -"
+	for i in range(len(lines)):
+		print lines[i]
+	if serialConnected:
+		PushToLux(lines)
+	print "--------------------------------"
+	time.sleep(displayInterval) 
 	print "\n"
 
 	
