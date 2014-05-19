@@ -118,12 +118,12 @@ def BreakToLines(text, lineLength):
 	
 def PushToLux(list):
 	push = []
-	for i in [0,1,2,len(list) - 1]: #add [:5] to this in order to fit on TransLux
+	for i in [0,1,2,len(list) - 1]:
 		push.append(list[i])
-	for i in push:	
+	for i in range(len(push)):	
 		print push[i]
-		f.write("s%d%s\r\n" % (i+1, push[i]))
-		flushserialin()
+		#f.write("s%d%s\r\n" % (i+1, push[i]))
+		#flushserialin()
 
 	
 def flushserialin():
@@ -176,10 +176,11 @@ while True:
 		tweets_d[t] = 1
 		print "----------NEW TWEET-------------"
 		print "--------------------------------"
-	for i in range(len(lines)):
-		print lines[i]
-	if serialConnected:
-		PushToLux(lines)
+	#if serialConnected:
+	PushToLux(lines)
+	#else:
+	#	for i in range(len(lines)):
+	#		print lines[i]
 	print "--------------------------------"
 	time.sleep(displayInterval) 
 	print "\n"
