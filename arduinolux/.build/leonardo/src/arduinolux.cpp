@@ -405,7 +405,7 @@ void display(byte msgbits[7][20][4], int duration_ms) {
     // enough for the image to persist
 
     int row_dwell_ms = 1;
-    int duration_cycles = duration_ms / (35 * row_dwell_ms);
+    int duration_cycles = duration_ms / (7 * row_dwell_ms);
     
     for(int i=0; i<duration_cycles; i++) {
         for (int r=0; r<7; r++) {
@@ -436,12 +436,12 @@ void flushtonewline() {
 
 void flushserial() {
     if (!Serial.available()) return;
-    Serial.print("flushing serial buffer:\r\n");
+//    Serial.print("flushing serial buffer:\r\n");
     while (Serial.available()) {
         int b = Serial.read();
-        Serial.print(b);
+//        Serial.print(b);
     }
-    Serial.print("\r\n");
+//    Serial.print("\r\n");
 }
 
 #define HELP_CMD       '?'
@@ -465,7 +465,7 @@ bool readmsglinedata(char msgline[32]) {
         if (b < 0) { delay(10); continue; }
         if (b == '\r') { break; }
         if (b == '\n') { break; }
-        Serial.print((char)b);
+//        Serial.print((char)b);
         msgline[i] = (char)(b);
         i++;
 
@@ -559,12 +559,12 @@ void loop() {
 
     while (true) {
         int photoValue = analogRead(PHOTOpin);
-        Serial.print("photoResistor reading: "); Serial.print(photoValue);
+//        Serial.print("photoResistor reading: "); Serial.print(photoValue);
         if (photoValue > photoLimit) {
-            Serial.print("/1024 ON\r\n");
-            display(msgbits, 5000);
+//            Serial.print("/1024 ON\r\n");
+            display(msgbits, 2000);
         } else {
-            Serial.print("/1024 OFF\r\n");
+//            Serial.print("/1024 OFF\r\n");
             display(msgbits, 10);
         }
         serialcontrol(msg, msgbits);

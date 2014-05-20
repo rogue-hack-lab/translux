@@ -21,7 +21,7 @@ twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET)
 #what strings to search Twitter for
 tags = [
 	'@KevinRConner','@RogueHackLab','@Soupala',		#MENTIONS
-	'#RHLTweetLux','#trtt2014',  	#HASHTAGS
+	'#git','#RHLTweetLux','#trtt2014',  	#HASHTAGS
 	'tinkerfest','Rogue Hack Lab'	#STRINGS
 	] 	
 print 'Search Terms:\n', tags, '\n'
@@ -69,19 +69,21 @@ def TweetDict(tags, results_per_tag):
 	t = {}
 	for tag in tags:
 		search_results = GetTweets(tag, results_per_tag)
-		for tweet in search_results['statuses']:
-			if tweet['retweeted'] == False:
-				t[tweet['id']] = tweet #"%s \n %s \n~@%s" % (tweet['created_at'], tweet['text'].encode('utf-8'), tweet['user']['screen_name'].encode('utf-8'))
+		if 'statuses' in search_results.keys():
+			for tweet in search_results['statuses']:
+				if tweet['retweeted'] == False:
+					t[tweet['id']] = tweet #"%s \n %s \n~@%s" % (tweet['created_at'], tweet['text'].encode('utf-8'), tweet['user']['screen_name'].encode('utf-8'))
 	return t	
 
 def GetTweets(String, Count):
+	search_results = {}
 	while True:
 		try:
 			search_results = twitter.search(q=String, count=Count)
 		except TwythonError as e:
 			ts = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
 			print ts, "\nUnable to Update Feed\nERROR:", e, "\n"
-			wait = 1 #default == 5
+			wait = 5 #default == 5
 			while wait != 0:
 				if wait == 1:
 					print "waiting", wait, "minute before attempting next cache\n"
@@ -121,9 +123,10 @@ def PushToLux(list):
 	for i in [0,1,2,len(list) - 1]:
 		push.append(list[i])
 	for i in range(len(push)):	
-		print push[i]
-		#f.write("s%d%s\r\n" % (i+1, push[i]))
-		#flushserialin()
+		#print push[i]
+		f.write("s%d%s\r\n" % (i+1, push[i]))
+		time.sleep(1)
+	flushserialin()
 
 	
 def flushserialin():
@@ -171,16 +174,19 @@ while True:
 		lines.append("")
 	if len(lines) == 3:
 		lines.append("             { Tinkerfest 2014 {")
+	print 'Tweet Pull Thread Status:', thread.isAlive()
+	if thread.isAlive() == False:
+		print 'do something'	
 	print "--------------------------------"
 	if tweets_d[t] == 0:
 		tweets_d[t] = 1
 		print "----------NEW TWEET-------------"
 		print "--------------------------------"
-	#if serialConnected:
-	PushToLux(lines)
-	#else:
-	#	for i in range(len(lines)):
-	#		print lines[i]
+	if serialConnected:
+		PushToLux(lines)
+	else:
+		for i in range(len(lines)):
+			print lines[i]
 	print "--------------------------------"
 	time.sleep(displayInterval) 
 	print "\n"
