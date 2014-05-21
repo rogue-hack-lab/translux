@@ -13,16 +13,16 @@ import apikeys, time, sys, os, serial, threading
 #to keep API keys out of version control create apikeys.py. 
 #it onlyneeds to contain the two definitions below
 #requires Authentication as of Twitter API v1.1
-twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET)
+twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET, apikeys.TWITTER_ACCESS_TOKEN, apikeys.TWITTER_ACCESS_TOKEN_SECRET)
 
 
 
 
 #what strings to search Twitter for
 tags = [
-	'@KevinRConner','@RogueHackLab','@Soupala',		#MENTIONS
-	'#git','#RHLTweetLux','#trtt2014',  	#HASHTAGS
-	'tinkerfest','Rogue Hack Lab'	#STRINGS
+	'@RogueHackLab',								#MENTIONS
+	'#ScienceWorks','#RHLTweetLux','#trtt2014',  	#HASHTAGS
+	'tinkerfest','Rogue Hack Lab'					#STRINGS
 	] 	
 print 'Search Terms:\n', tags, '\n'
 
@@ -35,7 +35,7 @@ displayInterval = 7 #default == 7
 #number of tweets displayed between each API call to Twitter
 #API calls are limited to 5 seconds per call or more accurately 180 calls per 15 minutes
 	#https://dev.twitter.com/docs/rate-limiting/1.1
-cacheInterval = 20 #default == 20
+cacheInterval = 30 #default == 30
 cacheMaxCount = 50
 
 #init objects
@@ -55,6 +55,7 @@ def updateCache(cacheInterval):
 		'''if len(tweets) > cacheMaxCount:
 			print "### Cache reset to zero  ###"
 			tweets.clear()'''
+		time.sleep(cacheInterval)
 		print "\n################################"
 		print "##    Updating Tweet Cache    ##"
 		tweets.update(TweetDict(tags, results_per_tag))
@@ -62,7 +63,6 @@ def updateCache(cacheInterval):
 			tweets_d[tweet]
 		print "##     %03d tweets cached      ##" % (len(tweets))
 		print "################################"
-		time.sleep(cacheInterval)
 
 def TweetDict(tags, results_per_tag):
 	'''creates a dictionary object containing {key==tweet[ID] : value==tweet[all values]}'''
@@ -83,16 +83,6 @@ def GetTweets(String, Count):
 		except TwythonError as e:
 			ts = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
 			print ts, "\nUnable to Update Feed\nERROR:", e, "\n"
-			wait = 5 #default == 5
-			while wait != 0:
-				if wait == 1:
-					print "waiting", wait, "minute before attempting next cache\n"
-				else:
-					print "waiting", wait, "minutes before attempting next cache\n"
-				time.sleep(60)
-				wait -= 1
-			cacheInterval += 5
-			print "cache interval increased to", cacheInterval
 			continue
 		break
 	return search_results
