@@ -77,15 +77,15 @@ def TweetDict(tags, results_per_tag):
 
 def GetTweets(String, Count):
 	search_results = {}
-	while True:
+	twitter.get_home_timeline()
+	if twitter.get_lastfunction_header('x-rate-limit-remaining') > 0:
 		try:
 			search_results = twitter.search(q=String, count=Count)
 		except TwythonError as e:
 			ts = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
 			print ts, "\nUnable to Update Feed\nERROR:", e, "\n"
-			continue
-		break
-	return search_results
+			time.sleep(60*10)
+		return search_results
 
 def TweetCleaner(tweetText):
 	h = tweetText.find('http')
@@ -165,6 +165,8 @@ while True:
 	if len(lines) == 3:
 		lines.append("             { Tinkerfest 2014 {")
 	print 'Tweet Pull Thread Status:', thread.isAlive()
+	#print 'get home timeline', 
+	print 'API calls remaining:', twitter.get_lastfunction_header('x-rate-limit-remaining')
 	if thread.isAlive() == False:
 		print 'do something'	
 	print "--------------------------------"
