@@ -79,7 +79,7 @@ def TweetDict(tags, results_per_tag):
 def GetTweets(String, Count):
 	search_results = {}
 	twitter.get_home_timeline()
-	if twitter.get_lastfunction_header('x-rate-limit-remaining') > 0:
+	if twitter.get_lastfunction_header('x-rate-limit-remaining') > 30:
 		try:
 			search_results = twitter.search(q=String, count=Count)
 		except TwythonError as e:
