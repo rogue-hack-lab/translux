@@ -62,6 +62,7 @@ def updateCache(cacheInterval):
 		for tweet in tweets:
 			tweets_d[tweet]
 		print "##     %03d tweets cached      ##" % (len(tweets))
+		print "##    Calls remaining: %03d    ##" % (twitter.get_lastfunction_header('x-rate-limit-remaining'))
 		print "################################"
 
 def TweetDict(tags, results_per_tag):
@@ -166,7 +167,6 @@ while True:
 		lines.append("             { Tinkerfest 2014 {")
 	print 'Tweet Pull Thread Status:', thread.isAlive()
 	#print 'get home timeline', 
-	print 'API calls remaining:', twitter.get_lastfunction_header('x-rate-limit-remaining')
 	if thread.isAlive() == False:
 		print 'do something'	
 	print "--------------------------------"
