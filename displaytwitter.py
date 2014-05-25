@@ -13,21 +13,17 @@ import apikeys, time, sys, os, serial, threading
 #to keep API keys out of version control create apikeys.py. 
 #it onlyneeds to contain the two definitions below
 #requires Authentication as of Twitter API v1.1
-twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET, apikeys.TWITTER_ACCESS_TOKEN, apikeys.TWITTER_ACCESS_TOKEN_SECRET)
+twitter = Twython(apikeys.TWITTER_APP_KEY, apikeys.TWITTER_APP_SECRET) #, apikeys.TWITTER_ACCESS_TOKEN, apikeys.TWITTER_ACCESS_TOKEN_SECRET)
 
 
 
 
 #what strings to search Twitter for
-tags = [
-	'@RogueHackLab',								#MENTIONS
-	'#ScienceWorks','#RHLTweetLux','#trtt2014',  	#HASHTAGS
-	'tinkerfest','Rogue Hack Lab'					#STRINGS
-	] 	
+tags = ['#TweetLux'] 	
 print 'Search Terms:\n', tags, '\n'
 
 #how many tweets from each tag
-results_per_tag = 1 #default == 5
+results_per_tag = 10 #default == 5
 
 #length of time each string is displayed in seconds
 displayInterval = 7 #default == 7
@@ -35,7 +31,7 @@ displayInterval = 7 #default == 7
 #number of tweets displayed between each API call to Twitter
 #API calls are limited to 5 seconds per call or more accurately 180 calls per 15 minutes
 	#https://dev.twitter.com/docs/rate-limiting/1.1
-cacheInterval = 30 #default == 30
+cacheInterval = 15 #default == 30
 cacheMaxCount = 50
 
 #init objects
@@ -46,7 +42,8 @@ def updateCache(cacheInterval):
 	'''A background process that checks for new tweets every (cacheInterval) seconds'''
 	#Initialize Tweets Dictionary and playcount
 	tweets.update(TweetDict(tags, results_per_tag))
-		#Good info about built in counters http://stackoverflow.com/questions/1692388/python-list-of-dict-if-exists-increment-a-dict-value-if-not-append-a-new-dic
+		#Good info about built in counters 
+		#http://stackoverflow.com/questions/1692388/python-list-of-dict-if-exists-increment-a-dict-value-if-not-append-a-new-dic
 	
 	for tweet in tweets:
 		tweets_d[tweet]
@@ -62,7 +59,6 @@ def updateCache(cacheInterval):
 		for tweet in tweets:
 			tweets_d[tweet]
 		print "##     %03d tweets cached      ##" % (len(tweets))
-		print "##    Calls remaining: %03d    ##" % (twitter.get_lastfunction_header('x-rate-limit-remaining'))
 		print "################################"
 
 def TweetDict(tags, results_per_tag):
@@ -78,15 +74,14 @@ def TweetDict(tags, results_per_tag):
 
 def GetTweets(String, Count):
 	search_results = {}
-	twitter.get_home_timeline()
-	if twitter.get_lastfunction_header('x-rate-limit-remaining') > 30:
-		try:
-			search_results = twitter.search(q=String, count=Count)
-		except TwythonError as e:
-			ts = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
-			print ts, "\nUnable to Update Feed\nERROR:", e, "\n"
-			time.sleep(60*10)
-		return search_results
+	try:
+		search_results = twitter.search(q=String, count=Count)
+		print "## Search: %s, %s ##" % (String, twitter.get_lastfunction_header('x-rate-limit-remaining'))	
+	except TwythonError as e:
+		ts = time.strftime("%d %b %Y %H:%M:%S", time.localtime())
+		print ts, "\nUnable to Update Feed\nERROR:", e, "\n"
+		time.sleep(60*10)
+	return search_results
 
 def TweetCleaner(tweetText):
 	h = tweetText.find('http')
@@ -114,8 +109,8 @@ def PushToLux(list):
 	for i in [0,1,2,len(list) - 1]:
 		push.append(list[i])
 	for i in range(len(push)):	
-		#print push[i]
 		f.write("s%d%s\r\n" % (i+1, push[i]))
+		print push[i]
 		time.sleep(1)
 	flushserialin()
 
@@ -149,40 +144,43 @@ except:
 thread = threading.Thread(target=updateCache, args=(cacheInterval,))
 e = threading.Event()
 thread.start()
-time.sleep(5)
+time.sleep(10)
 
 #display tweets in a loop
 while True:	
-	t = min(tweets_d, key=tweets_d.get)
-	if tweets_d[t] == 0:
-		tweet = tweets[t]
-	else:
-		tweet = tweets.values()[randint(0,len(tweets) - 1)]
-	text = tweet['text'].encode('utf-8')
-	lines = BreakToLines(TweetCleaner(text), 32)
-	lines.append("-- @%s --" % (tweet['user']['screen_name'].encode('utf-8')))
-	if len(lines) == 2:
-		lines.append("")
-	if len(lines) == 3:
-		lines.append("             { Tinkerfest 2014 {")
-	print 'Tweet Pull Thread Status:', thread.isAlive()
-	#print 'get home timeline', 
-	if thread.isAlive() == False:
-		print 'do something'	
-	print "--------------------------------"
-	if tweets_d[t] == 0:
-		tweets_d[t] = 1
-		print "----------NEW TWEET-------------"
+	if len(tweets_d) > 0:
+		t = min(tweets_d, key=tweets_d.get)
+		if tweets_d[t] == 0:
+			tweet = tweets[t]
+		else:
+			tweet = tweets.values()[randint(0,len(tweets) - 1)]
+		text = tweet['text'].encode('utf-8')
+		lines = BreakToLines(TweetCleaner(text), 32)
+		lines.append("-- @%s --" % (tweet['user']['screen_name'].encode('utf-8')))
+		if len(lines) == 2:
+			lines.append("")
+		if len(lines) == 3:
+			lines.append("             { Tinkerfest 2014 {")
+		print 'Tweet Pull Thread Status:', thread.isAlive()
+		#print 'get home timeline', 
+		if thread.isAlive() == False:
+			print 'do something'	
 		print "--------------------------------"
-	if serialConnected:
-		PushToLux(lines)
+		if tweets_d[t] == 0:
+			tweets_d[t] = 1
+			print "----------NEW TWEET-------------"
+			print "--------------------------------"
+		if serialConnected:
+			PushToLux(lines)
+		else:
+			for i in range(len(lines)):
+				print lines[i]
+		print "--------------------------------"
+		time.sleep(displayInterval) 
+		print "\n"
 	else:
-		for i in range(len(lines)):
-			print lines[i]
-	print "--------------------------------"
-	time.sleep(displayInterval) 
-	print "\n"
-
+		print "no tweets cached. waiting 30 seconds"
+		time.sleep(30)
 	
 	
 #close serial
