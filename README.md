@@ -7,8 +7,6 @@ Active development is in the arduinolux directory; currently there is a
 Leonardo board installed in the sign as it's permanent brain, and connected 
 to lab.roguehacklab.com via USB.
 
-See more project details at: https://roguehacklab.com/mediawiki/index.php/TransLux
-
 Arduino based development is using the 'ino tools' suite to do command line 
 builds rather than the arduino IDE. Unfortunately, ino tools and the arduino 
 IDE require different naming conventions / directory structures for source 
@@ -18,37 +16,31 @@ arduinolux/src/arduinolux.ino file into a sketch first.
 REQUIREMENTS:
 -------------
 
-- ino tools as of 2013-03-14 via http://inotools.org
+- ino tools as of 2013-03-14 via http://inotool.org
 - arduino 1.0.4 (1.0.3 doesn't seem to support the leonardo board)
 
 BUILD:
 ------
 
-1.  make yourself an account on lab.roguehacklab.com and add yourself to the 
-    'dialout' group to have r/w access to the Leonardo board on /dev/ttyACM0
-    
-        rhl@lab> sudo adduser YOURUSER
-        rhl@lab> sudo adduser YOURUSER dialout
-
-2.  Log into your new account, and check out this project
+2.  Check out this project
 
     If you want to commit changes, get set up as part of the rogue-hack-lab
     github organization, then:
     
-        YOURNAME@lab> git clone git@github.com:rogue-hack-lab/translux.git
+        git clone git@github.com:rogue-hack-lab/translux.git
     
     To get a read only git clone:
     
-        YOURNAME@lab> git clone https://github.com/rogue-hack-lab/translux.git
+        git clone https://github.com/rogue-hack-lab/translux.git
 
 3.  Build your copy of the tree
     
-        YOURNAME@lab> cd translux/arduinolux
-        YOURNAME@lab> ino build
+        cd translux/arduinolux
+        ino build
 
 4.  Upload to the sign:
     
-        YOURNAME@lab> ino upload
+        ino upload
     
     Make fabulous improvements, and commit :)
 
@@ -59,8 +51,8 @@ The sign should be powered on and the arduino connected to lab.roguehacklab.com
 via USB normally. If you connect to the serial port, you will see diagnostic messages
 being written periodically.
 
-    YOURNAME@lab> cd translux/arduinolux
-    YOURNAME@lab> ino serial
+    cd translux/arduinolux
+    ino serial
 
 This connects to the default serial-port configured in translux/arduinolux/ino.ini 
 configuration file using picocom (a minicom clone terminal.) The commands that the 
