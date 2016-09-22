@@ -3,15 +3,15 @@ translux
 
 Code related to our TransLux Datawall LED display
 
-Active development is in the arduinolux directory; currently there is a
-Leonardo board installed in the sign as it's permanent brain, and connected 
-to lab.roguehacklab.com via USB.
+Active development is in the arduinolux/src directory; currently there is a
+Leonardo board installed in the sign as it's permanent brain.
 
 Arduino based development is using the 'ino tools' suite to do command line 
-builds rather than the arduino IDE. Unfortunately, ino tools and the arduino 
-IDE require different naming conventions / directory structures for source 
-files. So if you want to try it out with the IDE, you have to copy the 
-arduinolux/src/arduinolux.ino file into a sketch first.
+builds rather than the arduino IDE. 
+
+Ino tools and the arduino IDE require different naming conventions and directory
+structures for source files. If you want to try it out with the Arduino IDE, 
+open the arduinolux/src/arduinolux.ino file from the IDE.
 
 REQUIREMENTS:
 -------------

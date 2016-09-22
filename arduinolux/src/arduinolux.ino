@@ -69,6 +69,8 @@
 // 0 == Uno
 // 1 == Boarduino (atmega328p)
 // 2 == Leonardo
+// 3 == Particle Photon (Wi-Fi) www.particle.io
+// 4 == Particle Electron (Cellular)
 
 #define BOARD 2
 //#define BOARD 1
