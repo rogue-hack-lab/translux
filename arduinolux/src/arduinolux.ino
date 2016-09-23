@@ -76,27 +76,27 @@
 //#define BOARD 1
 
 #if (BOARD == 2)
-#define CLOCKPORT  PORTC
-#define ENABLEPORT PORTD
-#define DATAPORT   PORTB
-#define CLOCKbit   7 // PC7
-#define ENABLEbit  6 // PD6
-#define DATA1bit   7 // PB7
-#define DATA2bit   6 // PB6
-#define DATA3bit   5 // PB5
-#define DATA4bit   4 // PB4
+    #define CLOCKPORT  PORTC
+    #define ENABLEPORT PORTD
+    #define DATAPORT   PORTB
+    #define CLOCKbit   7 // PC7
+    #define ENABLEbit  6 // PD6
+    #define DATA1bit   7 // PB7
+    #define DATA2bit   6 // PB6
+    #define DATA3bit   5 // PB5
+    #define DATA4bit   4 // PB4
 
 #else
-
-#define CLOCKPORT  PORTB
-#define ENABLEPORT PORTB
-#define DATAPORT   PORTB
-#define CLOCKbit  5
-#define ENABLEbit 4
-#define DATA1bit  3
-#define DATA2bit  2
-#define DATA3bit  1
-#define DATA4bit  0
+    #define CLOCKPORT  PORTB
+    #define ENABLEPORT PORTB
+    #define DATAPORT   PORTB
+    #define CLOCKbit  5
+    #define ENABLEbit 4
+    #define DATA1bit  3
+    #define DATA2bit  2
+    #define DATA3bit  1
+    #define DATA4bit  0
+    
 #endif
 
 #define CLOCKmask   (1<<CLOCKbit)
@@ -178,7 +178,8 @@ unsigned char font1[][5] = {
 {0x41, 0x41, 0x7F, 0x00, 0x00}, // ]
 {0x04, 0x02, 0x01, 0x02, 0x04}, // ^
 {0x40, 0x40, 0x40, 0x40, 0x40}, // _
-{0x00, 0x01, 0x02, 0x04, 0x00}, // `
+//{0x00, 0x01, 0x02, 0x04, 0x00}, // `
+{0x7F, 0x7F, 0x7F, 0x7F, 0x7F}, // ` -> ALL LEDS ON FOR DIAGNOSTICS
 {0x20, 0x54, 0x54, 0x54, 0x78}, // a
 {0x7F, 0x48, 0x44, 0x44, 0x38}, // b
 {0x38, 0x44, 0x44, 0x44, 0x20}, // c
@@ -205,12 +206,12 @@ unsigned char font1[][5] = {
 {0x44, 0x28, 0x10, 0x28, 0x44}, // x
 {0x0C, 0x50, 0x50, 0x50, 0x3C}, // y
 {0x44, 0x64, 0x54, 0x4C, 0x44}, // z
-{0x1c, 0x3e, 0x6b, 0x14, 0x00}, // RHL alien head
+{0x1C, 0x3E, 0x6B, 0x14, 0x00}, // RHL alien head
 //{0x00, 0x08, 0x36, 0x41, 0x00}, // {
 {0x00, 0x00, 0x7F, 0x00, 0x00}, // |
 {0x00, 0x41, 0x36, 0x08, 0x00}, // }
 {0x08, 0x04, 0x08, 0x10, 0x08}, // ~
-{0x1c, 0x3e, 0x6b, 0x14, 0x00} // RHL alien head
+{0x1C, 0x3E, 0x6B, 0x14, 0x00} // RHL alien head
 //{0x08, 0x1C, 0x2A, 0x08, 0x08} // <-
 };
 
@@ -370,13 +371,10 @@ void sendrowbits(int row) {
 }
 
 void sendmsgbits(int row, byte msgbits[7][20][4]) {
-    for (int frame=0; frame<2; frame++) {
-        for (int i=0; i<10; i++) {
-            int charpos = (frame*10)+i;
-            shiftOutMultiple(msgbits[row][charpos]);
-        }
-        sendrowbits(row);
+    for (int charpos=0; charpos<20; charpos++) {
+        shiftOutMultiple(msgbits[row][charpos]);
     }
+    sendrowbits(row);
 }
 
 void display(byte msgbits[7][20][4], int duration_ms) {
@@ -385,18 +383,16 @@ void display(byte msgbits[7][20][4], int duration_ms) {
     // enough for the image to persist
 
     int row_dwell_ms = 1;
-    int duration_cycles = duration_ms / (7 * row_dwell_ms);
+    int duration_cycles = max((7 * row_dwell_ms),duration_ms) / (7 * row_dwell_ms);
     
     for(int i=0; i<duration_cycles; i++) {
         for (int r=0; r<7; r++) {
-            rowdisable();
             sendmsgbits(r, msgbits);
             rowenable();
             delay(row_dwell_ms);
+            rowdisable();
             if (Serial.available()) break;
         }
-        rowdisable();
-        if (Serial.available()) break;
     }
 }
 
@@ -542,14 +538,14 @@ void loop() {
         Serial.print("photoResistor reading: "); Serial.print(photoValue);
         if (photoValue > photoLimit) {
             Serial.print("/1024 ON\r\n");
-            display(msgbits, 2000);
+            display(msgbits, 10);
         } else {
             Serial.print("/1024 OFF\r\n");
             display(msgbits, 10);
         }
         serialcontrol(msg, msgbits);
 
-        delay(600); // leave off for 300ms per cycle
+        delay(10); // leave off for 300ms per cycle
     }
 }
 
