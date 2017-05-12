@@ -12,14 +12,14 @@
  *            +----+
  *
  * Note that all the ground pins are tied together on the board. Also note: if you connect
- * the wrong enable pin, the board will display whatever random data happens to be in the 
+ * the wrong enable pin, the board will display whatever random data happens to be in the
  * shift registers (only one line, since the row select bits will be random too), and never
- * change no matter what data you send. Not that I would ever spend almost an entire 
- * Focused Hack Night trying to figure out why the LEDs don't change no matter what data 
+ * change no matter what data you send. Not that I would ever spend almost an entire
+ * Focused Hack Night trying to figure out why the LEDs don't change no matter what data
  * I send. Sheesh.
  *
  * PERMANENT BRAIN MODE:
- * 
+ *
  * Goals:
  * - reduce the number of pins required
  * - reduce flicker
@@ -30,12 +30,6 @@
  *                     HARNESS   PROTOBOARD-JUMPERS
  *      GND     -        black   (black)
  */
-#define CLOCKpin  13 //  brown   (blue)
-#define ENABLEpin 12 //  red     (white)
-#define DATA1pin  11 //  orange
-#define DATA2pin  10 //  yellow
-#define DATA3pin   9 //  green
-#define DATA4pin   8 //  blue
 
 #define PHOTOpin  A0
 /*
@@ -50,7 +44,7 @@
  * 8 - input bottom   DATA2   10, yellow
  * 9 - gnd bottom     GND      -, black  (black jmp)
  * 10- clock bottom   CLK     13, brown  (blue jmp)
- * 
+ *
  * 10-Pin Ribbon Cable 2
  * 1 - clock top      CLK     13, brown  (blue)
  * 2 - gnd top        GND      -, black  (black)
@@ -62,39 +56,67 @@
  * 8 - input bottom   DATA4    8, blue
  * 9 - gnd bottom     GND      -, black  (black)
  * 10- clock bottom   CLK     13, brown  (blue)
- * 
+ *
  */
 
-// The IO mapped register ports and pins differ for Uno/atmega328p and Leonardo
-// 0 == Uno
-// 1 == Boarduino (atmega328p)
-// 2 == Leonardo
+ // The IO mapped register ports and pins differ for Uno/atmega328p and Leonardo
+ // 0 == Uno
+ // 1 == Boarduino (atmega328p)
+ // 2 == Leonardo
+ // 3 == Particle Photon (Wi-Fi) Electron (Cellular) www.particle.io
 
-#define BOARD 2
-//#define BOARD 1
+ #define BOARD 3
 
+ #if (BOARD == 3)
+    #define CLOCKpin  D7 //  brown   (blue)
+    #define ENABLEpin D6 //  red     (white)
+    #define DATA1pin  D5 //  orange
+    #define DATA2pin  D4 //  yellow
+    #define DATA3pin  D3 //  green
+    #define DATA4pin  D2 //  blue
+
+ #else
+    #define CLOCKpin  13 //  brown   (blue)
+    #define ENABLEpin 12 //  red     (white)
+    #define DATA1pin  11 //  orange
+    #define DATA2pin  10 //  yellow
+    #define DATA3pin   9 //  green
+    #define DATA4pin   8 //  blue
+
+#endif
 #if (BOARD == 2)
-#define CLOCKPORT  PORTC
-#define ENABLEPORT PORTD
-#define DATAPORT   PORTB
-#define CLOCKbit   7 // PC7
-#define ENABLEbit  6 // PD6
-#define DATA1bit   7 // PB7
-#define DATA2bit   6 // PB6
-#define DATA3bit   5 // PB5
-#define DATA4bit   4 // PB4
+    #define CLOCKPORT  PORTC
+    #define ENABLEPORT PORTD
+    #define DATAPORT   PORTB
+    #define CLOCKbit   7 // PC7
+    #define ENABLEbit  6 // PD6
+    #define DATA1bit   7 // PB7
+    #define DATA2bit   6 // PB6
+    #define DATA3bit   5 // PB5
+    #define DATA4bit   4 // PB4
 
 #else
-
-#define CLOCKPORT  PORTB
-#define ENABLEPORT PORTB
-#define DATAPORT   PORTB
-#define CLOCKbit  5
-#define ENABLEbit 4
-#define DATA1bit  3
-#define DATA2bit  2
-#define DATA3bit  1
-#define DATA4bit  0
+    #if(BOARD == 3)
+        #define CLOCKPORT  GPIOA
+        #define ENABLEPORT GPIOA
+        #define DATAPORT   GPIOA
+        #define CLOCKbit  5
+        #define ENABLEbit 4
+        #define DATA1bit  3
+        #define DATA2bit  2
+        #define DATA3bit  1
+        #define DATA4bit  0
+    #else
+        #define CLOCKPORT  PORTB
+        #define ENABLEPORT PORTB
+        #define DATAPORT   PORTB
+        #define CLOCKbit  5
+        #define ENABLEbit 4
+        #define DATA1bit  3
+        #define DATA2bit  2
+        #define DATA3bit  1
+        #define DATA4bit  0
+    #endif
 #endif
 
 #define CLOCKmask   (1<<CLOCKbit)
@@ -176,7 +198,7 @@ unsigned char font1[][5] = {
 {0x41, 0x41, 0x7F, 0x00, 0x00}, // ]
 {0x04, 0x02, 0x01, 0x02, 0x04}, // ^
 {0x40, 0x40, 0x40, 0x40, 0x40}, // _
-{0x00, 0x01, 0x02, 0x04, 0x00}, // `
+{0x7F, 0x7F, 0x7F, 0x7F, 0x7F}, // ` -> ALL LEDS ON FOR DIAGNOSTICS
 {0x20, 0x54, 0x54, 0x54, 0x78}, // a
 {0x7F, 0x48, 0x44, 0x44, 0x38}, // b
 {0x38, 0x44, 0x44, 0x44, 0x20}, // c
@@ -203,23 +225,25 @@ unsigned char font1[][5] = {
 {0x44, 0x28, 0x10, 0x28, 0x44}, // x
 {0x0C, 0x50, 0x50, 0x50, 0x3C}, // y
 {0x44, 0x64, 0x54, 0x4C, 0x44}, // z
-{0x1c, 0x3e, 0x6b, 0x14, 0x00}, // RHL alien head
+{0x1C, 0x3E, 0x6B, 0x14, 0x00}, // RHL alien head
 //{0x00, 0x08, 0x36, 0x41, 0x00}, // {
 {0x00, 0x00, 0x7F, 0x00, 0x00}, // |
 {0x00, 0x41, 0x36, 0x08, 0x00}, // }
 {0x08, 0x04, 0x08, 0x10, 0x08}, // ~
-{0x1c, 0x3e, 0x6b, 0x14, 0x00} // RHL alien head
+{0x1C, 0x3E, 0x6B, 0x14, 0x00} // RHL alien head
 //{0x08, 0x1C, 0x2A, 0x08, 0x08} // <-
 };
 
-
 void setup() {
+    //allow use of external antannea
+    STARTUP(WiFi.selectAntenna(ANT_AUTO));
+
     pinMode(CLOCKpin,  OUTPUT);
     pinMode(ENABLEpin, OUTPUT);
-    for (int i=0; i<4; i++) { 
+    for (int i=0; i<4; i++) {
         pinMode(DATAPINS[i], OUTPUT);
     }
-    
+
     digitalWrite(CLOCKpin, LOW);
     digitalWrite(ENABLEpin, HIGH);
     for (int i=0; i<4; i++) {
@@ -227,11 +251,13 @@ void setup() {
     }
 
     pinMode(PHOTOpin, INPUT);
-
-    Serial.begin(9600); // init serial port at 9600 baud
-    //Serial.write("arduinolux firmware v1.0b\r\n");
+    #if (BOARD == 3)
+        Particle.publish("status","arduinolux firmware v1.0b\r\n");
+    #else
+        Serial.begin(9600); // init serial port at 9600 baud
+        Serial.write("arduinolux firmware v1.0b\r\n");
+    #endif
 }
-
 
 // our font data is all indexed by character, so font[c] -> {byte1, byte2, ... byte5}
 // where each byte is a column of the bit data for the repr of that char
@@ -250,28 +276,28 @@ unsigned char rowdots(int row, char c) {
         if (columnByte & (1 << row)) { mybit = 1; }
         result |= (mybit << column);
     }
-    
+
     return result;
 }
 
 void rendermsgbits(char msg[4][32], byte msgbits[7][20][4]) {
     for (int row=0; row < 7; row++) {
-        
+
         // zero all bytes in output first
         for (int cpos=0; cpos<20; cpos++) {
             for (int line=0; line < 4; line++) { msgbits[row][cpos][line] = 0; }
         }
-        
+
         int renderedbyte = 0;
         int renderedbit = 0;
-        
+
         for (int srcbyte=0; srcbyte < 32; srcbyte++) {
             unsigned char rowbytes[4];
             rowbytes[0] = rowdots(row, msg[0][srcbyte]);
             rowbytes[1] = rowdots(row, msg[1][srcbyte]);
             rowbytes[2] = rowdots(row, msg[2][srcbyte]);
             rowbytes[3] = rowdots(row, msg[3][srcbyte]);
-            
+
             for (int srcbit=0; srcbit < 5; srcbit++) {
                 // do stuff
                 for (int i=0; i<4; i++) {
@@ -288,8 +314,11 @@ void rendermsgbits(char msg[4][32], byte msgbits[7][20][4]) {
     }
 }
 
-//#define DIRECTIO 0 // NOT using directio
-#define DIRECTIO 1 // USING directio
+#if (BOARD == 3)
+    #define DIRECTIO 0 // NOT using directio
+#else
+    #define DIRECTIO 1 // USING directio
+#endif
 
 inline void clockLow() {
 #if DIRECTIO
@@ -309,9 +338,9 @@ inline void clockHigh() {
 
 inline void setData(int dataPin, bool value) {
 #if DIRECTIO
-    if (value) 
+    if (value)
         bitSet(DATAPORT, dataPinToBit[dataPin]);
-    else 
+    else
         bitClear(DATAPORT, dataPinToBit[dataPin]);
 #else
     digitalWrite(dataPin, value);
@@ -378,23 +407,21 @@ void sendmsgbits(int row, byte msgbits[7][20][4]) {
 }
 
 void display(byte msgbits[7][20][4], int duration_ms) {
-    // we have to send rows 1 at a time, since the data is fed to the LED drivers 
-    // directly from the serial-to-parallel chips, then we have to dwell for long 
+    // we have to send rows 1 at a time, since the data is fed to the LED drivers
+    // directly from the serial-to-parallel chips, then we have to dwell for long
     // enough for the image to persist
 
     int row_dwell_ms = 1;
-    int duration_cycles = duration_ms / (7 * row_dwell_ms);
-    
+    int duration_cycles = max((7 * row_dwell_ms),duration_ms) / (7 * row_dwell_ms);
+
     for(int i=0; i<duration_cycles; i++) {
         for (int r=0; r<7; r++) {
-            rowdisable();
             sendmsgbits(r, msgbits);
             rowenable();
             delay(row_dwell_ms);
+            rowdisable();
             if (Serial.available()) break;
         }
-        rowdisable();
-        if (Serial.available()) break;
     }
 }
 
@@ -453,7 +480,10 @@ bool readmsglinedata(char msgline[32]) {
 }
 
 int serialcontrol(char msg[4][32], byte msgbits[7][20][4]) {
-    if (!Serial.available()) return 0;
+    if (!Serial.available()) {
+        Particle.publish("serial_control","no serial");
+        return 0;
+    }
 
     bool error = true;
     int linechar = 0;
@@ -477,7 +507,7 @@ int serialcontrol(char msg[4][32], byte msgbits[7][20][4]) {
         }
         error = false;
         break;
-    case SETLINE_CMD: 
+    case SETLINE_CMD:
         Serial.write("type line number (1 - 4):\r\n");
     getline:
         linechar = Serial.read(); // read the line number
@@ -518,37 +548,40 @@ int serialcontrol(char msg[4][32], byte msgbits[7][20][4]) {
     return error;
 }
 
-
+bool publishStatus = false;
+bool initialized = false;
+char msg[4][32];
+byte msgbits[7][20][4];
 void loop() {
-    char msg[4][32] = {"{ ROGUE HACK LAB              {",
-                       "  Focused Hack Night, Mon 6pm  ",
-                       "  Open Hack Night, Wed 6:30pm  ",
-                       "  www.roguehacklab.com         "};
-    // compiler NULL terminates the strings, so explicitly set last byte to ' ' char after.
-    msg[0][31] = ' '; msg[1][31] = ' '; msg[2][31] = ' '; msg[3][31] = ' ';
 
-    byte msgbits[7][20][4];
+    if (!initialized) {
+      char msg[4][32] = {" {{{{{{  Rogue Hack Lab  {{{{{{",
+                         " {   Every Second Thursday    {",
+                         " { At Medford Public Library  {",
+                         " {{{  www.roguehacklab.com  {{{"};
 
-    // pre-calculate all the bits to send from the message to make our display routine fast
-    rendermsgbits(msg, msgbits);
+      // compiler NULL terminates the strings, so explicitly set last byte to ' ' char after.
+      msg[0][31] = ' '; msg[1][31] = ' '; msg[2][31] = ' '; msg[3][31] = ' ';
 
-    // photoresistor seems pretty sensitive. reading 64 @ 7:12pm on March 21, sun is down at home, not sure about Medford
-    const int photoLimit = 15;
+      // pre-calculate all the bits to send from the message to make our display routine fast
+      rendermsgbits(msg, msgbits);
+      initialized = true;
+      publishStatus = Particle.publish("status","Message Initialized");
+   }
 
-    while (true) {
-        int photoValue = analogRead(PHOTOpin);
-        Serial.print("photoResistor reading: "); Serial.print(photoValue);
-        if (photoValue > photoLimit) {
-            Serial.print("/1024 ON\r\n");
-            display(msgbits, 2000);
-        } else {
-            Serial.print("/1024 OFF\r\n");
-            display(msgbits, 10);
-        }
-        serialcontrol(msg, msgbits);
-
-        delay(600); // leave off for 300ms per cycle
+    if (Particle.connected()) {
+        display(msgbits, 7);
+        //serialcontrol(msg, msgbits);
+        //delay(1000); // leave off for 300ms per cycle
+    } else {
+        WiFi.off();
+        delay(1000);
+        WiFi.on();
+        delay(15000);
+        Particle.connect();
+        waitUntil(Particle.connected);
     }
+
 }
 
 
