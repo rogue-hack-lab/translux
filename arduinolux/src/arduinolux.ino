@@ -234,9 +234,14 @@ unsigned char font1[][5] = {
 //{0x08, 0x1C, 0x2A, 0x08, 0x08} // <-
 };
 
+bool publishStatus = false;
+bool initialized = false;
+char msg[4][32];
+byte msgbits[7][20][4];
+
 void setup() {
-    //allow use of external antannea
-    STARTUP(WiFi.selectAntenna(ANT_AUTO));
+
+    WiFi.selectAntenna(ANT_EXTERNAL);
 
     pinMode(CLOCKpin,  OUTPUT);
     pinMode(ENABLEpin, OUTPUT);
@@ -251,12 +256,9 @@ void setup() {
     }
 
     pinMode(PHOTOpin, INPUT);
-    #if (BOARD == 3)
-        Particle.publish("status","arduinolux firmware v1.0b\r\n");
-    #else
-        Serial.begin(9600); // init serial port at 9600 baud
-        Serial.write("arduinolux firmware v1.0b\r\n");
-    #endif
+    Particle.publish("status","arduinolux firmware v1.0b\r\n");
+    Serial.begin(9600);
+    Serial.write("arduinolux firmware v1.0b\r\n");
 }
 
 // our font data is all indexed by character, so font[c] -> {byte1, byte2, ... byte5}
@@ -548,10 +550,6 @@ int serialcontrol(char msg[4][32], byte msgbits[7][20][4]) {
     return error;
 }
 
-bool publishStatus = false;
-bool initialized = false;
-char msg[4][32];
-byte msgbits[7][20][4];
 void loop() {
 
     if (!initialized) {
@@ -593,10 +591,10 @@ void loop() {
 
 //
 // Ok, *really* need to figure out what the interface/handshaking should look like.
-// 
+//
 // Considering, initial byte gives type of command, rest of the data follows.
 //
-// 1<data up to newline> 
+// 1<data up to newline>
 //  reset message line 1 (same for 2, 3, 4)
 //
 // b<160 * 7 * 4 bits>
