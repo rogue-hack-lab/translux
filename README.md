@@ -4,25 +4,23 @@ translux
 Code related to our TransLux Datawall LED display
 
 Active development is in the arduinolux directory; currently there is a
-Leonardo board installed in the sign as it's permanent brain, and connected 
-to lab.roguehacklab.com via USB.
+Particle Photon board installed in the sign as it's permanent brain.
 
-Arduino based development is using the 'ino tools' suite to do command line 
-builds rather than the arduino IDE. Unfortunately, ino tools and the arduino 
-IDE require different naming conventions / directory structures for source 
-files. So if you want to try it out with the IDE, you have to copy the 
-arduinolux/src/arduinolux.ino file into a sketch first.
+Development is to be done using [Particle's](particle.io) provided [Desktop IDE](https://www.particle.io/products/development-tools/particle-desktop-ide).
 
 REQUIREMENTS:
 -------------
 
-- ino tools as of 2013-03-14 via http://inotool.org
-- arduino 1.0.4 (1.0.3 doesn't seem to support the leonardo board)
+- [Particle Desktop IDE](https://www.particle.io/products/development-tools/particle-desktop-ide).
+
+If you are going to develop on Rogue Hack Lab's specific installation you will also need:
+- Authorization to access Rogue Hack Lab's Particle.io account
+- Authorization to view Rogue Hack Lab's Translux Dropcam Feed
 
 BUILD:
 ------
 
-2.  Check out this project
+1.  Check out this project
 
     If you want to commit changes, get set up as part of the rogue-hack-lab
     github organization, then:
@@ -33,26 +31,50 @@ BUILD:
     
         git clone https://github.com/rogue-hack-lab/translux.git
 
-3.  Build your copy of the tree
-    
-        cd translux/arduinolux
-        ino build
+2.  Open the Dropcam feed to the Translux
 
-4.  Upload to the sign:
+        Get the Link and Password to this from the Rogue Hack Lab community
+
+3.  Prepare IDE
+        
+        Launch Particle Dev
+
+        Log into Rogue Hack Lab's account    
+            MENU:Particle > LogIn
+
+        Select the device
+            MENU:Particle > Select Device > Translux
+
+        Open Folder 
+            Ctrl + Shift + O > "translux/arduinolux/src"
+
+4.  Open [Particle Console](https://console.particle.io/logs)
+
+        Login with Rogue Hack Lab credentials
+        "/logs" serves as a serial monitor
+        "/devices" is where you can manipulate exposed functions and variables
+
+5.  Upload to the sign:
     
-        ino upload
-    
+        compile in the cloud
+            Ctrl + R
+        
+        Flash to Translux Particle
+            Ctrl + U
+
+6.  Review your changes through the Dropcam Feed
+
     Make fabulous improvements, and commit :)
+
+
 
 READING & WRITING TO THE SIGN
 -----------------------------
+*Read/Write is currently under development*
 
-The sign should be powered on and the arduino connected to lab.roguehacklab.com
-via USB normally. If you connect to the serial port, you will see diagnostic messages
-being written periodically.
-
-    cd translux/arduinolux
-    ino serial
+The sign should be powered on and the Photon connected to Particle.io.
+If you launch the [console](https://console.particle.io/devices) you can 
+see if the Translux Photon is connected via a blue dot.
 
 This connects to the default serial-port configured in translux/arduinolux/ino.ini 
 configuration file using picocom (a minicom clone terminal.) The commands that the 
@@ -67,6 +89,7 @@ arduino responds to on the serial interface are in translux/arduinolux/src/ardui
 
 UPDATING SIGN FROM MEETUP DATA
 ------------------------------
+*Requires Rebuild to utilize ParticleJS api*
 
 There is a pre-written script to set the sign to display the next 3 upcomming meetup events.
 You need to set a meetup API authentication key in your shell's environment so that the 
